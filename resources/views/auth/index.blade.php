@@ -444,36 +444,39 @@
                     await html5QrCode.start(
                         cameraId,
                         { fps: 10, qrbox: getResponsiveQrBox() },
-                        (decodedText) => {
+                        async (decodedText) => {
                             document.getElementById('kode_user').value = decodedText;
-                            stopScanner();
+                            await stopScanner();
                             document.getElementById('loginForm').submit();
                         }
                     );
                 } else {
-                    showCameraError("Kamera tidak ditemukan di perangkat ini.");
+                    showCameraError("<strong>Kamera Tidak Ditemukan!</strong><br>Perangkat Anda sepertinya tidak memiliki kamera atau sedang digunakan aplikasi lain.");
                 }
             } catch (err) {
                 console.error("Camera Error: ", err);
-                showCameraError("Izin kamera ditolak atau kamera tidak dapat diakses. Mohon izinkan akses kamera di browser Anda.");
+                showCameraError("<strong>Izin Kamera Ditolak!</strong><br>Mohon izinkan akses kamera di pengaturan browser Anda (biasanya di icon gembok dekat URL) lalu coba lagi.");
             }
         }
 
-        function showCameraError(message) {
-            cameraError.innerText = message;
+        function showCameraError(messageHtml) {
+            cameraError.innerHTML = messageHtml;
             cameraError.classList.remove('hidden');
             btnFallbackManual.classList.remove('hidden');
             document.getElementById('scan-text').innerText = "Coba Lagi";
         }
 
-        function stopScanner() {
+        async function stopScanner() {
             if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => {
+                try {
+                    await html5QrCode.stop();
                     resetScannerUI();
-                }).catch(err => {
+                } catch (err) {
                     console.error("Failed to stop scanning", err);
                     resetScannerUI();
-                });
+                }
+            } else {
+                resetScannerUI();
             }
         }
 
@@ -482,15 +485,20 @@
             document.getElementById('scanner-visual').classList.remove('hidden');
             document.getElementById('scan-line').classList.add('hidden');
             document.getElementById('scan-text').innerText = "Mulai Scan";
-            // cameraSelectContainer.classList.add('hidden');
         }
 
-        btnStartScan.addEventListener('click', () => (html5QrCode && html5QrCode.isScanning) ? stopScanner() : startScanner());
-
-        cameraSelect.addEventListener('change', () => {
+        btnStartScan.addEventListener('click', async () => {
             if (html5QrCode && html5QrCode.isScanning) {
-                stopScanner();
-                setTimeout(startScanner, 300); // Restart with new camera
+                await stopScanner();
+            } else {
+                startScanner();
+            }
+        });
+
+        cameraSelect.addEventListener('change', async () => {
+            if (html5QrCode && html5QrCode.isScanning) {
+                await stopScanner();
+                startScanner(); // Restart with new camera
             }
         });
 
