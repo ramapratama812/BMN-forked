@@ -165,15 +165,20 @@
                     </div>
 
                     <div class="p-4">
-                        {{-- Scan Section --}}
                         <div id="content-scan" class="space-y-6">
                             <div class="text-center space-y-4">
                                 <div id="scanner-visual" class="mx-auto w-32 h-32 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center relative overflow-hidden">
                                     <i id="scan-icon" data-lucide="scan" class="w-16 h-16 text-[#1b365d] transition-all"></i>
                                     <div id="scan-line" class="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/30 to-transparent hidden"></div>
                                 </div>
-                                <div id="reader-container" class="hidden overflow-hidden rounded-xl border-2 border-[#1b365d] mx-auto">
-                                    <div id="reader"></div>
+                                <div id="reader-container" class="hidden overflow-hidden rounded-xl border-2 border-[#1b365d] mx-auto w-full">
+                                    <div id="reader" style="width: 100%;"></div>
+                                </div>
+                                <div id="camera-select-container" class="hidden">
+                                    <select id="camera-select" class="w-full p-2 border-2 border-gray-100 rounded-xl focus:border-[#1b365d] focus:outline-none text-sm text-gray-700">
+                                    </select>
+                                </div>
+                                <div id="camera-error" class="hidden text-red-600 text-sm p-3 bg-red-50 rounded-xl border border-red-200">
                                 </div>
                                 <div>
                                     <h3 class="font-semibold text-lg text-gray-900 mb-2">Scan Kartu ID Anda</h3>
@@ -182,6 +187,10 @@
                                 <button id="btnStartScan" class="w-full bg-[#1b365d] hover:bg-[#254677] text-white h-12 rounded-xl font-semibold shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 transition-all active:scale-95">
                                     <i data-lucide="camera" class="w-5 h-5"></i>
                                     <span id="scan-text">Mulai Scan</span>
+                                </button>
+                                <button id="btnFallbackManual" onclick="switchTab('manual')" class="hidden w-full bg-gray-100 hover:bg-gray-200 text-gray-700 h-12 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all">
+                                    <i data-lucide="keyboard" class="w-5 h-5"></i>
+                                    <span>Gunakan Input Manual</span>
                                 </button>
                             </div>
                         </div>
@@ -381,32 +390,114 @@
             }
         }
 
-        const html5QrCode = new Html5Qrcode("reader");
+        let html5QrCode = null;
+        let cameras = [];
         const btnStartScan = document.getElementById('btnStartScan');
+        const cameraSelect = document.getElementById('camera-select');
+        const cameraSelectContainer = document.getElementById('camera-select-container');
+        const cameraError = document.getElementById('camera-error');
+        const btnFallbackManual = document.getElementById('btnFallbackManual');
 
-        function startScanner() {
-            document.getElementById('reader-container').classList.remove('hidden');
-            document.getElementById('scanner-visual').classList.add('hidden');
-            document.getElementById('scan-line').classList.remove('hidden');
-            document.getElementById('scan-text').innerText = "Berhenti";
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
-                document.getElementById('kode_user').value = decodedText;
-                stopScanner();
-                document.getElementById('loginForm').submit();
-            });
+        function initScanner() {
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+        }
+
+        function getResponsiveQrBox() {
+            const width = window.innerWidth;
+            if (width < 600) {
+                return 200; // Layar HP
+            }
+            return 250; // Layar Laptop/Desktop
+        }
+
+        async function startScanner() {
+            cameraError.classList.add('hidden');
+            btnFallbackManual.classList.add('hidden');
+            initScanner();
+
+            try {
+                // Minta izin kamera dan dapatkan daftar kamera
+                cameras = await Html5Qrcode.getCameras();
+                if (cameras && cameras.length > 0) {
+                    if (cameraSelect.options.length === 0) {
+                        cameras.forEach(camera => {
+                            const option = document.createElement('option');
+                            option.value = camera.id;
+                            option.text = camera.label || `Camera ${cameraSelect.length + 1}`;
+                            cameraSelect.appendChild(option);
+                        });
+                    }
+
+                    if (cameras.length > 1) {
+                        cameraSelectContainer.classList.remove('hidden');
+                    }
+
+                    const cameraId = cameraSelect.value || cameras[0].id;
+                    
+                    document.getElementById('reader-container').classList.remove('hidden');
+                    document.getElementById('scanner-visual').classList.add('hidden');
+                    document.getElementById('scan-line').classList.remove('hidden');
+                    document.getElementById('scan-text').innerText = "Berhenti";
+
+                    await html5QrCode.start(
+                        cameraId,
+                        { fps: 10, qrbox: getResponsiveQrBox() },
+                        (decodedText) => {
+                            document.getElementById('kode_user').value = decodedText;
+                            stopScanner();
+                            document.getElementById('loginForm').submit();
+                        }
+                    );
+                } else {
+                    showCameraError("Kamera tidak ditemukan di perangkat ini.");
+                }
+            } catch (err) {
+                console.error("Camera Error: ", err);
+                showCameraError("Izin kamera ditolak atau kamera tidak dapat diakses. Mohon izinkan akses kamera di browser Anda.");
+            }
+        }
+
+        function showCameraError(message) {
+            cameraError.innerText = message;
+            cameraError.classList.remove('hidden');
+            btnFallbackManual.classList.remove('hidden');
+            document.getElementById('scan-text').innerText = "Coba Lagi";
         }
 
         function stopScanner() {
-            if (html5QrCode.isScanning) {
+            if (html5QrCode && html5QrCode.isScanning) {
                 html5QrCode.stop().then(() => {
-                    document.getElementById('reader-container').classList.add('hidden');
-                    document.getElementById('scanner-visual').classList.remove('hidden');
-                    document.getElementById('scan-line').classList.add('hidden');
-                    document.getElementById('scan-text').innerText = "Mulai Scan";
+                    resetScannerUI();
+                }).catch(err => {
+                    console.error("Failed to stop scanning", err);
+                    resetScannerUI();
                 });
             }
         }
-        btnStartScan.addEventListener('click', () => html5QrCode.isScanning ? stopScanner() : startScanner());
+
+        function resetScannerUI() {
+            document.getElementById('reader-container').classList.add('hidden');
+            document.getElementById('scanner-visual').classList.remove('hidden');
+            document.getElementById('scan-line').classList.add('hidden');
+            document.getElementById('scan-text').innerText = "Mulai Scan";
+            // cameraSelectContainer.classList.add('hidden');
+        }
+
+        btnStartScan.addEventListener('click', () => (html5QrCode && html5QrCode.isScanning) ? stopScanner() : startScanner());
+
+        cameraSelect.addEventListener('change', () => {
+            if (html5QrCode && html5QrCode.isScanning) {
+                stopScanner();
+                setTimeout(startScanner, 300); // Restart with new camera
+            }
+        });
+
+        // Hentikan kamera saat pengguna meninggalkan halaman
+        window.addEventListener('beforeunload', () => {
+            stopScanner();
+        });
 
         // Credit Modal Functions
         function toggleCreditModal(show) {
