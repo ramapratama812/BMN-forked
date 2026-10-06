@@ -135,6 +135,14 @@
         // Submit Update via AJAX
         updateForm.addEventListener('submit', function(e) {
             e.preventDefault();
+
+            // Reset pesan error sebelumnya
+            document.getElementById('error-nama_ruangan').textContent = '';
+
+            const submitBtn = updateForm.querySelector('[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Menyimpan...';
+
             const uuid = document.getElementById('ruangan_uuid').value;
             fetch(`/admin/bmn/ruangan/update/${uuid}`, {
                 method: 'POST',
@@ -143,8 +151,21 @@
             })
             .then(res => res.json())
             .then(data => {
-                if(data.success) location.reload();
-                else { /* Tampilkan error */ }
+                if (data.success) {
+                    location.reload();
+                } else if (data.errors) {
+                    // Tampilkan pesan error validasi dari server
+                    if (data.errors.nama_ruangan) {
+                        document.getElementById('error-nama_ruangan').textContent = data.errors.nama_ruangan[0];
+                    }
+                }
+            })
+            .catch(() => {
+                document.getElementById('error-nama_ruangan').textContent = 'Terjadi kesalahan, coba lagi.';
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Simpan Perubahan';
             });
         });
     });

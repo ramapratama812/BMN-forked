@@ -54,6 +54,9 @@ class BmnController extends Controller
     {
         $validated = $request->validate([
             'nama_ruangan' => 'required|unique:bmn_ruangans,nama_ruangan',
+        ], [
+            'nama_ruangan.required' => 'Nama ruangan wajib diisi.',
+            'nama_ruangan.unique'   => 'Nama ruangan sudah terdaftar, gunakan nama lain.',
         ]);
 
         $validated['uuid'] = Str::uuid();
@@ -74,6 +77,9 @@ class BmnController extends Controller
 
         $request->validate([
             'nama_ruangan' => 'required|unique:bmn_ruangans,nama_ruangan,' . $ruangan->id,
+        ], [
+            'nama_ruangan.required' => 'Nama ruangan wajib diisi.',
+            'nama_ruangan.unique'   => 'Nama ruangan sudah terdaftar, gunakan nama lain.',
         ]);
 
         $ruangan->update(['nama_ruangan' => $request->nama_ruangan]);
@@ -107,6 +113,9 @@ class BmnController extends Controller
     {
         $validated = $request->validate([
             'nama_kategori' => 'required|unique:bmn_kategoris,nama_kategori',
+        ], [
+            'nama_kategori.required' => 'Nama kategori wajib diisi.',
+            'nama_kategori.unique'   => 'Nama kategori sudah terdaftar, gunakan nama lain.',
         ]);
 
         $validated['uuid'] = Str::uuid();
@@ -127,6 +136,9 @@ class BmnController extends Controller
 
         $request->validate([
             'nama_kategori' => 'required|unique:bmn_kategoris,nama_kategori,' . $kategori->id,
+        ], [
+            'nama_kategori.required' => 'Nama kategori wajib diisi.',
+            'nama_kategori.unique'   => 'Nama kategori sudah terdaftar, gunakan nama lain.',
         ]);
 
         $kategori->update(['nama_kategori' => $request->nama_kategori]);
@@ -160,6 +172,9 @@ class BmnController extends Controller
     {
         $request->validate([
             'nama_jenis_kerusakan' => 'required|unique:bmn_jenis_kerusakans,nama_jenis_kerusakan',
+        ], [
+            'nama_jenis_kerusakan.required' => 'Nama jenis kerusakan wajib diisi.',
+            'nama_jenis_kerusakan.unique'   => 'Nama jenis kerusakan sudah terdaftar, gunakan nama lain.',
         ]);
 
         BmnJenisKerusakan::create([
@@ -180,6 +195,9 @@ class BmnController extends Controller
         $data = BmnJenisKerusakan::where('uuid', $uuid)->firstOrFail();
         $request->validate([
             'nama_jenis_kerusakan' => 'required|unique:bmn_jenis_kerusakans,nama_jenis_kerusakan,' . $data->id,
+        ], [
+            'nama_jenis_kerusakan.required' => 'Nama jenis kerusakan wajib diisi.',
+            'nama_jenis_kerusakan.unique'   => 'Nama jenis kerusakan sudah terdaftar, gunakan nama lain.',
         ]);
 
         $data->update(['nama_jenis_kerusakan' => $request->nama_jenis_kerusakan]);
