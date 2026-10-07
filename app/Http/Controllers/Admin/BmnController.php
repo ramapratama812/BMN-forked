@@ -287,6 +287,9 @@ class BmnController extends Controller
     {
         $validated = $request->validate([
             'nama_unit_kerja' => 'required|unique:unit_kerjas,nama_unit_kerja|max:255',
+        ], [
+            'nama_unit_kerja.required' => 'Nama unit kerja wajib diisi.',
+            'nama_unit_kerja.unique'   => 'Nama unit kerja sudah terdaftar, gunakan nama lain.',
         ]);
 
         $validated['uuid'] = Str::uuid();
@@ -305,11 +308,14 @@ class BmnController extends Controller
     {
         $unit_kerja = UnitKerja::where('uuid', $uuid)->firstOrFail();
 
-        $validated = $request->validate([
+        $request->validate([
             'nama_unit_kerja' => 'required|max:255|unique:unit_kerjas,nama_unit_kerja,' . $unit_kerja->id,
+        ], [
+            'nama_unit_kerja.required' => 'Nama unit kerja wajib diisi.',
+            'nama_unit_kerja.unique'   => 'Nama unit kerja sudah terdaftar, gunakan nama lain.',
         ]);
 
-        $unit_kerja->update($validated);
+        $unit_kerja->update(['nama_unit_kerja' => $request->nama_unit_kerja]);
 
         return response()->json(['success' => true]);
     }
