@@ -270,7 +270,10 @@ class UserController extends Controller
 		$currentUser = Auth::user();
 		$search = $request->search;
 
-		$user = User::where('nama_lengkap', 'like', '%' . $search . '%')
+		$user = User::where(function ($query) use ($search) {
+				$query->where('nama_lengkap', 'like', '%' . $search . '%')
+				      ->orWhere('nip', 'like', '%' . $search . '%');
+			})
 			->where('id', '!=', $currentUser->id)
 			->where('nama_lengkap', '!=', 'Superadmin')
 			->orderBy('nama_lengkap', 'asc')
