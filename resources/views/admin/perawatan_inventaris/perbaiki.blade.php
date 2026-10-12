@@ -36,7 +36,7 @@
             <div class="mb-10">
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Lampiran Foto Bukti (Opsional)</label>
                 <div class="relative">
-                    <input type="file" name="foto" id="foto" accept="image/*"
+                    <input type="file" name="foto[]" multiple id="foto" accept="image/*"
                            class="block w-full text-sm text-slate-500 dark:text-slate-400
                                   file:mr-4 file:py-3 file:px-6
                                   file:rounded-xl file:border-0
@@ -45,6 +45,8 @@
                                   transition-all cursor-pointer bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 focus:outline-none focus:ring-4 focus:ring-[#1b365d]/20">
                     <p class="mt-3 text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Format: JPG, PNG, JPEG. Maksimal ukuran 4MB.</p>
                 </div>
+                <div id="file-error" class="text-red-500 text-xs mt-2 hidden bg-red-50 p-2 rounded border border-red-100"></div>
+                <div id="image-preview-container" class="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-4"></div>
             </div>
 
             <div class="flex gap-4">
@@ -60,4 +62,89 @@
         </form>
     </div>
 </div>
+
+<script>
+    const fileUpload = document.getElementById('foto');
+    const previewContainer = document.getElementById('image-preview-container');
+    const fileError = document.getElementById('file-error');
+    
+    let dt = new DataTransfer(); 
+
+    fileUpload.addEventListener('change', function(e) {
+        fileError.classList.add('hidden');
+        fileError.innerHTML = '';
+        
+        let files = e.target.files;
+        let errors = [];
+        
+        for (let i = 0; i < files.length; i++) {
+            let file = files[i];
+            
+            if (file.size > 4 * 1024 * 1024) {
+                errors.push(`File "<b>${file.name}</b>" terlalu besar (Maksimal 4 MB).`);
+                continue;
+            }
+            
+            if (!file.type.startsWith('image/')) {
+                errors.push(`File "<b>${file.name}</b>" bukan gambar.`);
+                continue;
+            }
+            
+            dt.items.add(file);
+        }
+        
+        if (errors.length > 0) {
+            fileError.innerHTML = errors.join('<br>');
+            fileError.classList.remove('hidden');
+        }
+        
+        updateInputAndPreviews();
+    });
+
+    function updateInputAndPreviews() {
+        fileUpload.files = dt.files;
+        previewContainer.innerHTML = '';
+        
+        for (let i = 0; i < dt.files.length; i++) {
+            let file = dt.files[i];
+            let reader = new FileReader();
+            
+            reader.readAsDataURL(file);
+            reader.onload = function(e) {
+                let div = document.createElement('div');
+                div.className = 'relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm aspect-square bg-slate-50';
+                
+                let img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'w-full h-full object-cover';
+                
+                let btn = document.createElement('button');
+                btn.type = 'button';
+                btn.innerHTML = '×';
+                btn.className = 'absolute top-1.5 right-1.5 bg-red-500/90 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 shadow-sm hover:bg-red-600 z-20';
+                
+                btn.onclick = function(event) {
+                    event.preventDefault(); 
+                    event.stopPropagation();
+                    removeFile(i);
+                };
+                
+                div.appendChild(img);
+                div.appendChild(btn);
+                previewContainer.appendChild(div);
+            };
+        }
+    }
+    
+    function removeFile(indexToRemove) {
+        let newDt = new DataTransfer();
+        for (let i = 0; i < dt.files.length; i++) {
+            if (i !== indexToRemove) {
+                newDt.items.add(dt.files[i]);
+            }
+        }
+        dt = newDt;
+        updateInputAndPreviews();
+    }
+</script>
 @endsection

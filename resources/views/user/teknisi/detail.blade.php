@@ -142,15 +142,28 @@
                     {{-- FOTO KANAN --}}
                     <div class="lg:col-span-5 flex flex-col items-center justify-center">
                         <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 w-full text-left lg:text-center">Lampiran Visual</label>
-                        @if ($laporan->foto)
-                            <div class="group relative overflow-hidden rounded-3xl shadow-lg w-full aspect-[4/3] border border-slate-100 bg-white p-1.5">
+                        @if ($laporan->fotos && $laporan->fotos->count() > 0)
+                            <div class="grid grid-cols-2 gap-3 w-full">
+                                @foreach ($laporan->fotos as $foto)
+                                <a href="{{ asset('storage/'.$foto->foto) }}" target="_blank" class="group relative overflow-hidden rounded-2xl shadow-sm border border-slate-100 bg-white p-1 aspect-[4/3] block">
+                                    <div class="w-full h-full rounded-xl overflow-hidden relative">
+                                        <img src="{{ asset('storage/'.$foto->foto) }}" class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110" alt="Foto Kerusakan">
+                                        <div class="absolute inset-0 img-overlay-gradient opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-2">
+                                            <span class="text-white text-[10px] font-medium backdrop-blur-sm bg-white/20 px-2 py-0.5 rounded-lg">Buka</span>
+                                        </div>
+                                    </div>
+                                </a>
+                                @endforeach
+                            </div>
+                        @elseif ($laporan->foto)
+                            <a href="{{ asset('storage/'.$laporan->foto) }}" target="_blank" class="group relative overflow-hidden rounded-3xl shadow-lg w-full aspect-[4/3] border border-slate-100 bg-white p-1.5 block">
                                 <div class="w-full h-full rounded-2xl overflow-hidden relative">
                                     <img src="{{ asset('storage/'.$laporan->foto) }}" class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110" alt="Foto Kerusakan">
                                     <div class="absolute inset-0 img-overlay-gradient opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
                                         <span class="text-white text-xs font-medium backdrop-blur-sm bg-white/20 px-3 py-1 rounded-lg">Bukti Laporan</span>
                                     </div>
                                 </div>
-                            </div>
+                            </a>
                         @else
                             <div class="w-full aspect-[4/3] bg-slate-50 rounded-3xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 transition-colors hover:bg-slate-100 hover:border-slate-400">
                                 <div class="bg-white p-4 rounded-full shadow-sm mb-3">

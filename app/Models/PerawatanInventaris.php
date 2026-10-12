@@ -45,4 +45,10 @@ class PerawatanInventaris extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    // RELASI BARU: Menghubungkan perawatan dengan multi-foto bukti penyelesaian
+    public function fotosBukti()
+    {
+        return $this->hasMany(PerawatanInventarisFoto::class, 'perawatan_inventaris_id');
+    }
 }

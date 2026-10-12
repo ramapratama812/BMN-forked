@@ -26,22 +26,44 @@ class LaporanKerusakanController extends Controller
             'barang_id' => 'required',
             'jenis_kerusakan' => 'required',
             'deskripsi' => 'required',
-            'foto' => 'nullable|image|max:4096'
+            'foto' => 'nullable|array',
+            'foto.*' => 'image|max:4096'
         ]);
 
-        $foto = null;
+        $fotoPath = null;
+        $savedPaths = [];
+
         if ($request->hasFile('foto')) {
-            $foto = $request->file('foto')->store('laporan/kerusakan', 'public');
+            $inputFotos = $request->file('foto');
+            if (!is_array($inputFotos)) {
+                $inputFotos = [$inputFotos];
+            }
+
+            foreach ($inputFotos as $index => $f) {
+                $path = $f->store('laporan/kerusakan', 'public');
+                $savedPaths[] = $path;
+
+                if ($index === 0) {
+                    $fotoPath = $path;
+                }
+            }
         }
 
-        LaporanKerusakan::create([
+        $laporan = LaporanKerusakan::create([
             'barang_id' => $request->barang_id,
             'user_id' => Auth::id(),
             'jenis_kerusakan' => $request->jenis_kerusakan,
             'deskripsi' => $request->deskripsi,
-            'foto' => $foto,
+            'foto' => $fotoPath,
             'status' => 'pending',
         ]);
+
+        foreach ($savedPaths as $path) {
+            \App\Models\LaporanKerusakanFoto::create([
+                'laporan_kerusakan_id' => $laporan->id,
+                'foto' => $path
+            ]);
+        }
 
         return redirect()->route('user.inventaris.detail', [
                 'id' => $request->barang_id,

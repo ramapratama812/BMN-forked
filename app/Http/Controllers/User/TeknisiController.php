@@ -91,17 +91,32 @@ class TeknisiController extends Controller
             'deskripsi'        => 'required',
             'biaya'            => 'required|numeric',
             'status_perbaikan' => 'required|in:diperbaiki,tidak_dapat_diperbaiki',
-            'foto_bukti'       => 'nullable|image|max:4096'
+            'foto_bukti'       => 'nullable|array',
+            'foto_bukti.*'     => 'image|max:4096'
         ]);
 
         $laporan = LaporanKerusakan::where('uuid', $uuid)->firstOrFail();
 
         $fotoPath = null;
+        $savedPaths = [];
+
         if ($request->hasFile('foto_bukti')) {
-            $fotoPath = $request->file('foto_bukti')->store('perawatan/bukti', 'public');
+            $inputFotos = $request->file('foto_bukti');
+            if (!is_array($inputFotos)) {
+                $inputFotos = [$inputFotos];
+            }
+
+            foreach ($inputFotos as $index => $f) {
+                $path = $f->store('perawatan/bukti', 'public');
+                $savedPaths[] = $path;
+
+                if ($index === 0) {
+                    $fotoPath = $path;
+                }
+            }
         }
 
-        PerawatanInventaris::create([
+        $perawatan = PerawatanInventaris::create([
             'uuid'              => Str::uuid(),
             'barang_id'         => $laporan->barang_id,
             'user_id'           => Auth::id(),
@@ -114,6 +129,13 @@ class TeknisiController extends Controller
             'status'            => $request->status_perbaikan // Menyimpan hasil radio button
         ]);
 
+        foreach ($savedPaths as $path) {
+            \App\Models\PerawatanInventarisFoto::create([
+                'perawatan_inventaris_id' => $perawatan->id,
+                'foto_bukti' => $path
+            ]);
+        }
+
         $laporan->delete();
 
         return redirect()->route('user.teknisi.logbook')->with('success', 'Perbaikan berhasil! Data telah diserahkan ke Admin Perawatan Inventaris untuk verifikasi.');
@@ -121,7 +143,7 @@ class TeknisiController extends Controller
 
     public function logbook(Request $request)
     {
-        $query = PerawatanInventaris::with(['barang'])
+        $query = PerawatanInventaris::with(['barang', 'fotosBukti'])
             ->where('user_id', Auth::id())
             ->where('jenis_perawatan', 'perbaikan')
             ->whereIn('status', ['proses', 'diperbaiki', 'tidak_dapat_diperbaiki', 'selesai']);
@@ -154,7 +176,7 @@ class TeknisiController extends Controller
 
     public function downloadPdf(Request $request)
     {
-        $query = PerawatanInventaris::with(['barang'])
+        $query = PerawatanInventaris::with(['barang', 'fotosBukti'])
             ->where('user_id', Auth::id())
             ->where('jenis_perawatan', 'perbaikan')
             ->whereIn('status', ['proses', 'diperbaiki', 'tidak_dapat_diperbaiki', 'selesai']);

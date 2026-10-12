@@ -62,14 +62,36 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-col items-center justify-center">
+                    <div class="flex flex-col items-center justify-start">
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 self-start">Bukti Foto</label>
-                        @if ($laporan->foto)
-                            <div class="group relative overflow-hidden rounded-2xl ring-1 ring-slate-200 transition-all hover:ring-indigo-300 shadow-sm w-full">
+                        
+                        @if (isset($laporan->fotos) && $laporan->fotos->count() > 0)
+                            <div class="grid grid-cols-2 gap-4 w-full">
+                                @foreach ($laporan->fotos as $f)
+                                    <div class="group relative overflow-hidden rounded-xl ring-1 ring-slate-200 transition-all hover:ring-indigo-300 shadow-sm aspect-square cursor-pointer"
+                                         onclick="openModal('{{ asset('storage/'.$f->foto) }}')">
+                                        <img src="{{ asset('storage/'.$f->foto) }}"
+                                             class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110"
+                                             alt="Foto Kerusakan">
+                                        <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @elseif ($laporan->foto)
+                            <div class="group relative overflow-hidden rounded-2xl ring-1 ring-slate-200 transition-all hover:ring-indigo-300 shadow-sm w-full cursor-pointer"
+                                 onclick="openModal('{{ asset('storage/'.$laporan->foto) }}')">
                                 <img src="{{ asset('storage/'.$laporan->foto) }}"
                                      class="w-full h-64 object-cover transform transition-transform duration-700 group-hover:scale-110"
                                      alt="Foto Kerusakan">
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
                             </div>
                         @else
                             <div class="w-full h-64 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
@@ -114,4 +136,45 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Fullscreen Image -->
+<div id="imageModal" class="fixed inset-0 z-[100] hidden bg-slate-900/95 flex items-center justify-center p-4 transition-opacity duration-300 opacity-0" onclick="closeModal()">
+    <button class="absolute top-6 right-6 text-white hover:text-rose-400 transition-colors bg-slate-800/50 rounded-full p-2" onclick="closeModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+    </button>
+    <img id="modalImage" src="" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl transform scale-95 transition-transform duration-300" alt="Full Image" onclick="event.stopPropagation()">
+</div>
+
+<script>
+    function openModal(imageSrc) {
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        
+        modalImg.src = imageSrc;
+        modal.classList.remove('hidden');
+        
+        // Trigger animation
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modalImg.classList.remove('scale-95');
+            modalImg.classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        
+        modal.classList.add('opacity-0');
+        modalImg.classList.remove('scale-100');
+        modalImg.classList.add('scale-95');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modalImg.src = '';
+        }, 300);
+    }
+</script>
 @endsection

@@ -80,19 +80,32 @@ class PerawatanInventarisController extends Controller
     {
         $request->validate([
             'keluhan' => 'required|string',
-            'foto'    => 'nullable|image|mimes:jpg,jpeg,png|max:4096' // Validasi file foto
+            'foto'    => 'nullable|array',
+            'foto.*'  => 'image|mimes:jpg,jpeg,png|max:4096'
         ]);
 
         $p = PerawatanInventaris::findOrFail($id);
 
-        // Proses simpan file foto jika ada
         $fotoPath = null;
+        $savedPaths = [];
+
         if ($request->hasFile('foto')) {
-            $fotoPath = $request->file('foto')->store('laporan_kerusakan', 'public');
+            $inputFotos = $request->file('foto');
+            if (!is_array($inputFotos)) {
+                $inputFotos = [$inputFotos];
+            }
+
+            foreach ($inputFotos as $index => $f) {
+                $path = $f->store('laporan_kerusakan', 'public');
+                $savedPaths[] = $path;
+
+                if ($index === 0) {
+                    $fotoPath = $path;
+                }
+            }
         }
 
-        // Buat Laporan Kerusakan berstatus disetujui agar langsung tampil di teknisi/index.blade.php
-        \App\Models\LaporanKerusakan::create([
+        $laporan = \App\Models\LaporanKerusakan::create([
             'uuid'            => \Illuminate\Support\Str::uuid(),
             'barang_id'       => $p->barang_id,
             'user_id'         => Auth::id(), // Admin yang melapor
@@ -101,6 +114,13 @@ class PerawatanInventarisController extends Controller
             'foto'            => $fotoPath, // Simpan path foto ke database
             'status'          => 'disetujui'
         ]);
+
+        foreach ($savedPaths as $path) {
+            \App\Models\LaporanKerusakanFoto::create([
+                'laporan_kerusakan_id' => $laporan->id,
+                'foto' => $path
+            ]);
+        }
 
         // Hapus status dari PerawatanInventaris (akan dibuat ulang oleh Teknisi saat memproses)
         $p->delete();
