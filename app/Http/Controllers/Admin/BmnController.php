@@ -405,7 +405,10 @@ class BmnController extends Controller
             'posisi'             => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ];
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'kode_barang.unique' =>
+                'Kode barang sudah terdaftar. Gunakan kode yang berbeda.',
+        ]);
 
         // LOGIKA PENENTUAN LOKASI & UNIT KERJA
         if ($ruangan == 'general') {
@@ -543,7 +546,10 @@ class BmnController extends Controller
             $rules['user_id'] = 'required';
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [
+            'kode_barang.unique' =>
+                'Kode barang sudah terdaftar. Gunakan kode yang berbeda.',
+        ]);
 
         // Update Lokasi & Unit Kerja
         $validated['ruangan'] = ($request->tipe_penempatan == 'lokasi')
