@@ -322,10 +322,7 @@ class BarangController extends Controller
             $collection = $collection->concat($bmn);
         }
 
-        if ($collection->isEmpty()) {
-            notify()->error('Data barang tidak ditemukan.');
-            return redirect()->back();
-        }
+        // Jika koleksi kosong, tetap lanjut render PDF dengan tabel kosong
 
         if ($kategori == 'bmn') {
             $data = [
@@ -372,10 +369,7 @@ class BarangController extends Controller
             $collection = $collection->concat($query->get());
         }
 
-        if ($collection->isEmpty()) {
-            notify()->error('Data tidak ditemukan');
-            return redirect()->back();
-        }
+        // Jika koleksi kosong, tetap lanjut render PDF dengan tabel kosong
 
         $data['barang'] = $collection;
         $pdf = Pdf::loadView('admin.barang.qrcode_pdf', $data)->setPaper('a4', 'portrait');

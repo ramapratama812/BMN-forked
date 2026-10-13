@@ -115,7 +115,7 @@
       </tr>
     </thead>
     <tbody>
-      @foreach ($barang as $b)
+      @forelse ($barang as $b)
         <tr>
           <td class="center-text">{{ $loop->iteration }}</td>
 
@@ -167,7 +167,13 @@
              @endif
           </td>
         </tr>
-      @endforeach
+      @empty
+        <tr>
+          <td colspan="9" class="center-text" style="padding: 30px 10px; color: #999; font-style: italic;">
+            Belum ada data barang untuk ditampilkan.
+          </td>
+        </tr>
+      @endforelse
     </tbody>
   </table>
 </body>

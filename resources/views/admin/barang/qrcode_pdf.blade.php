@@ -118,7 +118,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($barang as $b)
+            @forelse ($barang as $b)
                 @php
                     $isBmn = isset($b->ruangan);
 
@@ -166,7 +166,13 @@
                     </td>
                     <td class="nama-barang">{{ $b->nama_barang }}</td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="2" style="text-align: center; padding: 30px 10px; color: #999; font-style: italic;">
+                        Belum ada data barang di ruangan ini.
+                    </td>
+                </tr>
+            @endforelse
         </tbody>
     </table>
 </body>
