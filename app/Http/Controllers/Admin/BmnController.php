@@ -712,4 +712,62 @@ class BmnController extends Controller
             ->header('Content-Type', 'image/png')
             ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
+
+    // templat download template csv buat impor barang bmn (baris yang harus diisi dan contoh)
+    public function downloadTemplateCsv ()
+    {
+      $filename = 'template_impor_barang_bmn.csv';
+
+      $headers = [
+        'nama_barang',
+        'nup',
+        'kode_barang',
+        'kategori',
+        'tipe_penempatan',
+        'ruangan_pilihan',
+        'user_id',
+        'unit_kerja_pilihan',
+        'merk',
+        'nomor_seri',
+        'jumlah',
+        'persentase_kondisi',
+        'tanggal_perolehan',
+        'nilai_perolehan',
+        'asal_pengadaan',
+        'catatan',
+      ];
+
+      $example = [
+          'Laptop Lenovo',
+          '001',
+          '',
+          'Elektronik',
+          'lokasi',
+          'Ruang TU',
+          '',
+          'Administrasi',
+          'Lenovo',
+          'ABC123',
+          '1',
+          '90',
+          '2026-01-15',
+          '8500000',
+          'Pembelian',
+          'Laptop operasional',
+      ];
+
+      return response()->streamDownload(function () use ($headers, $example) {
+          $output = fopen('php://output', 'w');
+
+          // BOM agar karakter UTF-8 terbaca dengan baik di Excel
+          fwrite($output, "\xEF\xBB\xBF");
+
+          fputcsv($output, $headers, ';');
+          fputcsv($output, $example, ';');
+
+          fclose($output);
+      }, $filename, [
+          'Content-Type' => 'text/csv; charset=UTF-8',
+      ]);
+    }
 }

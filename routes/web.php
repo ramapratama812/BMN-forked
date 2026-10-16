@@ -201,6 +201,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('admin/bmn')->middleware(['auth', 'verified.password', 'role:superadmin,admin'])->group(function () {
 
+      // Route untuk download template csv
+      Route::prefix('template')->group(function () {
+        Route::get('/csv', [BmnController::class, 'downloadTemplateCsv'])->name('bmn.template.csv');
+      });
+
       // Route untuk Ruangan BMN
       Route::prefix('ruangan')->group(function () {
         Route::get('/', [BmnController::class, 'ruanganIndex'])->name('bmn.ruangan.index');

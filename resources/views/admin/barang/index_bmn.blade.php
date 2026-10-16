@@ -132,6 +132,12 @@
                               </a>
                           </li>
                           <li>
+                              <a href="{{ route('bmn.template.csv') }}"
+                                  class="w-full text-left block px-4 py-3 hover:bg-blue-50 hover:text-[#1b365d] transition-colors">
+                                  <i class="fa-solid fa-download mr-2 opacity-70"></i> Unduh Template CSV
+                              </a>
+                          </li>
+                          <li>
                               <button data-modal-target="print-modal" data-modal-toggle="print-modal"
                                   class="w-full text-left block px-4 py-3 hover:bg-blue-50 hover:text-[#1b365d] transition-colors">
                                   <i class="fa-solid fa-print mr-2 opacity-70"></i> Menu Cetak & QR
