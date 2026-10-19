@@ -1,4 +1,7 @@
-@php use Carbon\Carbon; @endphp
+@php
+  use Carbon\Carbon;
+  Carbon::setLocale('id');
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 
@@ -97,9 +100,8 @@
       <img src="{{ asset('img/assets/esimprod_logo.png') }}" alt="Logo" class="logo">
     </div>
 
-    <h3 style="font-weight: normal;"><strong>No Penggunaan:</strong>{{ $peminjaman->nomor_peminjaman }}</h3>
-    <p><strong>Waktu
-        Penggunaan:</strong>{{ Carbon::parse($peminjaman->tanggal_peminjaman)->translatedFormat('d F Y H:i') }}</p>
+    <h3 style="font-weight: normal;"><strong>No Peminjaman:</strong> {{ $peminjaman->nomor_peminjaman }}</h3>
+    <p><strong>Tanggal Peminjaman:</strong> {{ !empty($peminjaman->tanggal_peminjaman) ? Carbon::parse($peminjaman->tanggal_peminjaman)->locale('id')->translatedFormat('d F Y') : '-' }}</p>
 
     <div class="info-section">
       <div class="item">
@@ -111,10 +113,8 @@
       <div class="item">
         <p><strong>Surat Tugas:</strong> {{ $peminjaman->nomor_surat }}</p>
         <p><strong>Peruntukan:</strong> {{ $peminjaman->peruntukan->peruntukan }}</p>
-        <p><strong>Tgl
-            Penggunaan:</strong> {{ Carbon::parse($peminjaman->tanggal_penggunaan)->translatedFormat('d F Y') }}
-        </p>
-        <p><strong>Sampai:</strong> {{ Carbon::parse($peminjaman->tanggal_kembali)->translatedFormat('d F Y') }}</p>
+        <p><strong>Tgl. Penggunaan:</strong> {{ !empty($peminjaman->tanggal_penggunaan) ? Carbon::parse($peminjaman->tanggal_penggunaan)->locale('id')->translatedFormat('d F Y') : '-' }}</p>
+        <p><strong>Batas Pengembalian:</strong> {{ !empty($peminjaman->tanggal_kembali) ? Carbon::parse($peminjaman->tanggal_kembali)->locale('id')->translatedFormat('d F Y') : '-' }}</p>
       </div>
       <div class="item">
         <p><strong>Kode:</strong> {{ $peminjaman->kode_peminjaman }}</p>

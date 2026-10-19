@@ -1,4 +1,7 @@
-@php use Carbon\Carbon; @endphp
+@php
+  use Carbon\Carbon;
+  Carbon::setLocale('id');
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 
@@ -125,32 +128,24 @@
           {{ $pengembalian->peminjaman->nomor_peminjaman }}</h3>
         <h3 style="font-weight: normal;"><strong>Kode Pengembalian:</strong> {{ $pengembalian->kode_pengembalian }}</h3>
       </div>
-      <div class="item">
-        <h3><strong>Waktu Peminjaman:</strong>
-          {{ Carbon::parse($pengembalian->peminjaman->tanggal_peminjaman)->format('d F Y') }}</h3>
-        <h3><strong>Waktu
-            Pengembalian:</strong>{{ Carbon::parse($pengembalian->tanggal_kembali)->translatedFormat('d F Y') }}
-        </h3>
-      </div>
     </div>
 
 
     <div class="info-section">
       <div class="item">
-        <p><strong>Peminjam:</strong> {{ $pengembalian->peminjaman->peminjam }} </p>
-        <p><strong>NIP:</strong> {{ Auth::user()->nip }}</p>
-        <p><strong>No HP:</strong> {{ Auth::user()->nomor_hp }}</p>
-        <p><strong>Jabatan:</strong> {{ Auth::user()->jabatan->jabatan }}</p>
+        <p><strong>Peminjam:</strong> {{ $pengembalian->peminjaman?->peminjam ?? ($pengembalian->peminjam ?? '-') }} </p>
+        <p><strong>NIP:</strong> {{ Auth::user()?->nip ?? '-' }}</p>
+        <p><strong>No HP:</strong> {{ Auth::user()?->nomor_hp ?? '-' }}</p>
+        <p><strong>Jabatan:</strong> {{ Auth::user()?->jabatan?->jabatan ?? '-' }}</p>
       </div>
       <div class="item">
-        <p><strong>Surat Tugas:</strong> {{ $pengembalian->peminjaman->nomor_surat }} </p>
-        <p><strong>Peruntukan:</strong> {{ $pengembalian->peminjaman->peruntukan->peruntukan }} </p>
-        <p><strong>Tgl
-            Penggunaan:</strong>
-          {{ Carbon::parse($pengembalian->peminjaman->tanggal_penggunaan)->translatedFormat('d F Y') }}
+        <p><strong>Surat Tugas:</strong> {{ $pengembalian->peminjaman?->nomor_surat ?? '-' }} </p>
+        <p><strong>Peruntukan:</strong> {{ $pengembalian->peminjaman?->peruntukan?->peruntukan ?? '-' }} </p>
+        <p><strong>Tgl. Penggunaan:</strong>
+          {{ !empty($pengembalian->peminjaman?->tanggal_penggunaan) ? Carbon::parse($pengembalian->peminjaman->tanggal_penggunaan)->locale('id')->translatedFormat('d F Y') : '-' }}
         </p>
-        <p><strong>Sampai:</strong>
-          {{ Carbon::parse($pengembalian->peminjaman->tanggal_kembali)->translatedFormat('d F Y') }}
+        <p><strong>Batas Pengembalian:</strong>
+          {{ !empty($pengembalian->peminjaman?->tanggal_kembali) ? Carbon::parse($pengembalian->peminjaman->tanggal_kembali)->locale('id')->translatedFormat('d F Y') : '-' }}
         </p>
       </div>
     </div>
@@ -159,6 +154,7 @@
       <thead>
         <tr>
           <th>NO</th>
+          <th>Kode Barang</th>
           <th>Nama Barang</th>
           <th>Merk</th>
           <th>No Seri</th>
@@ -171,6 +167,7 @@
         @foreach ($barangKembali as $key => $item)
           <tr>
             <td>{{ $key + 1 }}</td>
+            <td>{{ $item['kode_barang'] ?? '-' }}</td>
             <td>{{ $item['nama_barang'] }}</td>
             <td>{{ $item['merk'] }}</td>
             <td>{{ $item['nomor_seri'] }}</td>
@@ -178,18 +175,16 @@
             <td>
               @if ($item['kondisi'] !== 'baik')
                 <input
-                  id="barangUUID"
                   type="hidden"
-                  class="input-field"
+                  class="input-field barang-uuid"
                   value="{{ $item['uuid'] }}"
                 >
                 <input
-                  id="barangDesc"
                   type="text"
-                  class="input-field"
-                  placeholder="Isi penjelasan!"
+                  class="input-field barang-desc"
+                  value="{{ (!empty($item['deskripsi']) && $item['deskripsi'] !== 'Barang Telah Dikembalikan') ? $item['deskripsi'] : '' }}"
+                  placeholder="Isi penjelasan kerusakan!"
                   oninput="validateDescription(this)"
-                  oninvalid="this.setCustomValidity('Deskripsi barang harus diisi!')"
                   required
                 >
               @else
@@ -202,12 +197,14 @@
       </tbody>
     </table>
 
+    @if (!empty($barangHilang) && count($barangHilang) > 0)
     <p>Barang belum dikembalikan</p>
 
     <table>
       <thead>
         <tr>
           <th class="blm">NO</th>
+          <th class="blm">Kode Barang</th>
           <th class="blm">Nama Barang</th>
           <th class="blm">Merk</th>
           <th class="blm">No Seri</th>
@@ -219,30 +216,34 @@
         @foreach ($barangHilang as $key => $item)
           <tr>
             <td>{{ $key + 1 }}</td>
+            <td>{{ $item['kode_barang'] ?? '-' }}</td>
             <td>{{ $item['nama_barang'] }} </td>
             <td>{{ $item['merk'] }}</td>
             <td>{{ $item['nomor_seri'] }}</td>
             <td>
+              @if(!empty($item['is_unreturned']))
+                <span style="color: #b45309; font-weight: 500;">Masih Dipinjam</span>
+              @else
               <input
-                id="barangUUID"
                 type="hidden"
-                class="input-field"
+                class="input-field barang-uuid"
                 value="{{ $item['uuid'] }}"
               >
               <input
-                id="barangDesc"
                 type="text"
-                class="input-field"
+                class="input-field barang-desc"
+                value="{{ (!empty($item['deskripsi']) && $item['deskripsi'] !== 'Barang Telah Dikembalikan') ? $item['deskripsi'] : '' }}"
                 placeholder="Isi penjelasan !"
                 oninput="validateDescription(this)"
-                oninvalid="this.setCustomValidity('Deskripsi barang harus diisi!')"
                 required
               >
+              @endif
             </td>
           </tr>
         @endforeach
       </tbody>
     </table>
+    @endif
 
     <div class="btn-group">
       <button
@@ -259,201 +260,113 @@
     </div>
   </div>
   <script>
+    // Fungsi validasi deskripsi agar aman saat event inline maupun listener
+    function validateDescription(input) {
+      if (!input) return true;
+      const isValid = input.value.trim() !== '';
+      input.classList.toggle('is-invalid', !isValid);
+      if (!isValid) {
+        input.setCustomValidity('Deskripsi barang harus diisi!');
+      } else {
+        input.setCustomValidity('');
+      }
+      return isValid;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       const printPdfButton = document.getElementById('printpdf');
       const clearButton = document.getElementById('clear');
-      const rows = document.querySelectorAll('tr');
       const inputs = document.querySelectorAll('.input-field');
 
       inputs.forEach(input => {
-        // Periksa apakah input dalam kondisi disabled
         if (input.disabled) {
-          input.placeholder = ''; // Hilangkan placeholder jika disabled
+          input.placeholder = '';
+        }
+        if (input.classList.contains('barang-desc')) {
+          input.addEventListener('input', () => validateDescription(input));
+          input.addEventListener('blur', () => validateDescription(input));
         }
       });
 
-        class LostItemManager {
-          lostItemsArray;
-          constructor() {
-            this.lostItemsArray = [];
-            this.initializeValidation();
+      class ReturnReportManager {
+        async sendToAPI(redirect_route) {
+          const descInputs = document.querySelectorAll('.barang-desc');
+
+          // Jika tidak ada input penjelasan barang, langsung arahkan
+          if (descInputs.length === 0) {
+            this.redirectBasedOnRoute(redirect_route);
+            return;
           }
 
-          initializeValidation() {
-            rows.forEach(row => {
-              const uuid = row.querySelector('#barangUUID');
-              const barangDescInput = row.querySelector('#barangDesc');
+          const itemsToUpdate = [];
+          let allValid = true;
 
-              if (barangDescInput) {
-                // Event listeners for validation
-                barangDescInput.addEventListener('input', () => this.validateInput(barangDescInput));
-                barangDescInput.addEventListener('blur', () => this.validateInput(barangDescInput));
+          descInputs.forEach(input => {
+            const row = input.closest('tr');
+            const uuidInput = row ? row.querySelector('.barang-uuid') : null;
+            const desc = input.value.trim();
 
-                // Event listener for item addition
-                barangDescInput.addEventListener('change', () => {
-                  if (this.validateInput(barangDescInput)) {
-                    const itemDescription = barangDescInput.value.trim();
-                    const lostItem = {
-                      uuid: uuid.value,
-                      description: itemDescription
-                    };
-
-                    this.addOrUpdateItem(lostItem);
-                    console.log('Data Barang Tak Kembali:', this.lostItemsArray); //Debug
-                  }
+            if (!desc) {
+              validateDescription(input);
+              input.reportValidity();
+              allValid = false;
+            } else {
+              validateDescription(input);
+              if (uuidInput && uuidInput.value) {
+                itemsToUpdate.push({
+                  uuid: uuidInput.value,
+                  description: desc
                 });
               }
-            });
+            }
+          });
+
+          if (!allValid) {
+            return;
           }
 
-          validateInput(input) {
-            const itemDescription = input.value.trim();
-            const isValid = itemDescription !== '';
+          if (itemsToUpdate.length > 0) {
+            try {
+              const response = await fetch("{{ route('user.pengembalian.update_desc') }}", {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ barang: itemsToUpdate })
+              });
 
-            // Toggle validation classes
-            input.classList.toggle('is-invalid', !isValid);
-
-            if (!isValid) {
-              input.setCustomValidity('Deskripsi barang harus diisi!');
-              input.reportValidity();
-            } else {
-              input.setCustomValidity('');
-            }
-
-            return isValid;
-          }
-
-          addOrUpdateItem(item) {
-            const existingItemIndex = this.lostItemsArray.findIndex(
-              existing => existing.uuid === item.uuid
-            );
-
-            if (existingItemIndex !== -1) {
-              this.lostItemsArray[existingItemIndex] = item;
-            } else {
-              this.lostItemsArray.push(item);
-            }
-          }
-
-          validateAllInputs() {
-            const itemRows = document.querySelectorAll('#barangDesc');
-
-            // If no lost item rows exist, return true
-            if (itemRows.length === 0) {
-              return true;
-            }
-
-            let isValid = true;
-            itemRows.forEach(barangDescInput => {
-              if (!this.validateInput(barangDescInput)) {
-                isValid = false;
+              if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
               }
-            });
-            return isValid;
-          }
-
-          validateItems() {
-            const itemRows = document.querySelectorAll('#barangDesc');
-
-            // If no lost item rows, consider it a valid scenario
-            if (itemRows.length === 0) {
-              return true;
+            } catch (error) {
+              console.error('Error saat menyimpan penjelasan:', error);
+              alert('Terjadi kesalahan saat menyimpan penjelasan: ' + error.message);
+              return;
             }
-
-            if (this.lostItemsArray.length === 0) {
-              alert('Tidak ada barang hilang yang diinput!');
-              return false;
-            }
-
-            const invalidItems = this.lostItemsArray.filter(item => !item.description);
-            if (invalidItems.length > 0) {
-              alert('Harap lengkapi deskripsi untuk semua barang!');
-              return false;
-            }
-
-            return true;
           }
 
-        async sendToAPI(redirect_route) {
-          // If no inputs exist for lost items, proceed directly
-          const itemRows = document.querySelectorAll('#barangDesc');
-          console.log(itemRows); //Debug
-          if (itemRows.length === 0) {
-            this.redirectBasedOnRoute(redirect_route);
-            return;
-          }
-
-          if (!this.validateAllInputs()) {
-            return;
-          }
-
-          if (!this.validateItems()) {
-            return;
-          }
-
-          try {
-            // If there are no lost items, send an empty array
-            const dataToSend = this.lostItemsArray.length > 0 ? {
-              barang: this.lostItemsArray
-            } : {
-              barang: []
-            };
-
-            const response = await fetch('update_desc', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-              },
-              body: JSON.stringify(dataToSend)
-            });
-
-            if (!response.ok) {
-              throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const responseData = await response.json();
-            console.log('Response from server:', responseData);
-
-            this.redirectBasedOnRoute(redirect_route);
-
-          } catch (error) {
-            console.error('Error:', error);
-            alert('Terjadi kesalahan: ' + error.message);
-          }
+          this.redirectBasedOnRoute(redirect_route);
         }
 
         redirectBasedOnRoute(redirect_route) {
           if (redirect_route === 'printpdf') {
-            window.location.href = "{{ route('user.pengembalian.pdf') }}";
+            window.location.href = "{{ route('user.pengembalian.pdf', ['kode_pengembalian' => $pengembalian->kode_pengembalian, 'kode_peminjaman' => $pengembalian->kode_peminjaman]) }}";
           } else if (redirect_route === 'clear') {
             window.location.href = "{{ route('user.option') }}";
           }
         }
-
-        resetData() {
-          const itemRows = document.querySelectorAll('#barangDesc');
-          itemRows.forEach(barangDescInput => {
-            barangDescInput.value = '';
-            barangDescInput.classList.remove('is-invalid');
-          });
-          this.lostItemsArray.length = 0;
-        }
       }
 
-      const lostItemManager = new LostItemManager();
+      const reportManager = new ReturnReportManager();
 
       if (printPdfButton) {
-        printPdfButton.addEventListener('click', () =>
-          lostItemManager.sendToAPI('printpdf')
-        );
+        printPdfButton.addEventListener('click', () => reportManager.sendToAPI('printpdf'));
       }
 
       if (clearButton) {
-        clearButton.addEventListener('click', () => {
-          lostItemManager.sendToAPI('clear');
-        });
+        clearButton.addEventListener('click', () => reportManager.sendToAPI('clear'));
       }
     });
   </script>

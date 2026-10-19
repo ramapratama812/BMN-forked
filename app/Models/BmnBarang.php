@@ -53,11 +53,14 @@ public function perawatanAktif()
                 ->where('status', '!=', 'selesai')
                 ->latest();
 }
-    // Pastikan ini di Model BmnBarang
     public function perawatanInventaris()
     {
         // Jika menggunakan ID (Primary Key)
         return $this->hasMany(PerawatanInventaris::class, 'barang_id', 'id');
     }
 
+    public function laporanKerusakan()
+    {
+        return $this->hasMany(LaporanKerusakan::class, 'barang_id', 'id');
+    }
 }

@@ -277,16 +277,18 @@ Route::middleware(['auth', 'role:user,tim_perbaikan'])->group(function () {
 });
 
 // User Route (Hanya untuk User)
-Route::middleware(['role:user'])->group(function () {
+Route::middleware(['auth', 'role:user'])->group(function () {
   Route::get('user/options', [OptionsController::class, 'index'])->name('user.option');
 
   Route::prefix('user/peminjaman')->middleware(['auth', 'role:user'])->group(function () {
     Route::get('/', [PeminjamanUser::class, 'index'])->name('user.peminjaman.index');
-    Route::post('/scan', [PeminjamanUser::class, 'scan'])->name('user.peminjaman.scan');
+    Route::get('/search-barang', [PeminjamanUser::class, 'searchBarang'])->name('user.peminjaman.search-barang');
+    Route::post('/add-item', [PeminjamanUser::class, 'addItem'])->name('user.peminjaman.add-item');
     Route::delete('/remove/{uuid}', [PeminjamanUser::class, 'removeItem'])->name('user.peminjaman.remove');
     Route::post('/store', [PeminjamanUser::class, 'store'])->name('user.peminjaman.store');
     Route::get('/report', [PeminjamanUser::class, 'report'])->name('user.peminjaman.report');
     Route::get('/pdf', [PeminjamanUser::class, 'printReport'])->name('user.peminjaman.pdf');
+    Route::get('/riwayat/pdf', [PeminjamanUser::class, 'exportRiwayatPdf'])->name('user.peminjaman.riwayat.pdf');
     Route::post('/peminjaman/send-email/{kodePeminjaman}', [PeminjamanUser::class, 'sendEmail'])->name('peminjaman.sendEmail');
   });
 
@@ -301,7 +303,7 @@ Route::middleware(['role:user'])->group(function () {
   });
 });
 
-Route::prefix('admin')->group(function () {
+Route::prefix('admin')->middleware(['auth', 'role:superadmin,admin'])->group(function () {
   Route::get('/antrean-perbaikan', [AntreanPerbaikanController::class, 'index'])->name('admin.antrean-perbaikan.index');
   Route::get('/antrean-perbaikan/logbook', [AntreanPerbaikanController::class, 'logbook'])->name('admin.antrean-perbaikan.logbook');
   Route::get('/antrean-perbaikan/{uuid}/detail', [AntreanPerbaikanController::class, 'detail'])->name('admin.antrean-perbaikan.detail');

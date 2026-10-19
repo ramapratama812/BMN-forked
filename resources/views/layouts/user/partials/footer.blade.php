@@ -4,10 +4,12 @@
         {{ date('Y') }}
     </span>
     <ul class="flex flex-wrap items-center mt-3 text-sm font-medium text-gray-500 dark:text-gray-400 sm:mt-0">
-        <li>
-            <a href="{{ asset('storage/uploads/guidebook/' . $file->file) }}" target="_blank"
-                class="hover:underline me-4 md:me-6">Panduan Penggunaan</a>
-        </li>
+        @if (!empty($file) && !empty($file->file))
+            <li>
+                <a href="{{ asset('storage/uploads/guidebook/' . $file->file) }}" target="_blank"
+                    class="hover:underline me-4 md:me-6">Panduan Penggunaan</a>
+            </li>
+        @endif
         <li>
             <button data-modal-target="select-modal" data-modal-toggle="select-modal"
                 class="hover:underline me-4 md:me-6 block">Credit</button>

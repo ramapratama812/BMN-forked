@@ -1,3 +1,7 @@
+@php
+  use Carbon\Carbon;
+  Carbon::setLocale('id');
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 
@@ -104,7 +108,7 @@
     // Pastikan path QR code benar (kadang perlu path absolute folder storage)
     // Jika menggunakan symlink (php artisan storage:link), public_path('storage/...') sudah benar.
     // Jika tidak, mungkin perlu storage_path('app/public/...')
-    $qrPath = public_path('storage/uploads/qr_codes_peminjaman/' . $peminjaman->qr_code);
+    $qrPath = !empty($peminjaman->qr_code) ? public_path('storage/uploads/qr_codes_peminjaman/' . $peminjaman->qr_code) : null;
 @endphp
 
 <body>
@@ -114,7 +118,7 @@
         <td style="width: 50%;">
           <div style="font-weight: bold; font-size: 30px;">Daftar Barang Penggunaan</div>
           <div style="font-size: 20px;">Nomor Peminjaman: {{ $peminjaman->nomor_peminjaman }}</div>
-          <div>Tanggal Penggunaan: {{ \Carbon\Carbon::parse($peminjaman->tanggal_peminjaman)->translatedFormat('d F Y') }}
+          <div>Tanggal Peminjaman: {{ !empty($peminjaman->tanggal_peminjaman) ? Carbon::parse($peminjaman->tanggal_peminjaman)->locale('id')->translatedFormat('d F Y') : '-' }}
           </div>
         </td>
         <td style="width: 50%; text-align: right;">
@@ -138,14 +142,17 @@
             <div>Surat Tugas : {{ $peminjaman->nomor_surat }}</div>
             <div>Peruntukan : {{ $peminjaman->peruntukan->peruntukan }}</div>
             <div>Tgl. Penggunaan :
-              {{ Carbon\Carbon::parse($peminjaman->tanggal_penggunaan)->translatedFormat('d F Y') }}</div>
-            <div>Sampai : {{ Carbon\Carbon::parse($peminjaman->tanggal_kembali)->translatedFormat('d F Y') }}
+              {{ !empty($peminjaman->tanggal_penggunaan) ? Carbon::parse($peminjaman->tanggal_penggunaan)->locale('id')->translatedFormat('d F Y') : '-' }}</div>
+            <div>Batas Pengembalian : {{ !empty($peminjaman->tanggal_kembali) ? Carbon::parse($peminjaman->tanggal_kembali)->locale('id')->translatedFormat('d F Y') : '-' }}
             </div>
           </td>
           <td class="w-half">
-            <div>QR Pengembalian : <img
-                src="{{ public_path('storage/uploads/qr_codes_peminjaman/' . $peminjaman->qr_code) }}" alt=""
-                width="50px">
+            <div>QR Pengembalian :
+              @if (!empty($peminjaman->qr_code) && file_exists(public_path('storage/uploads/qr_codes_peminjaman/' . $peminjaman->qr_code)))
+                <img src="{{ public_path('storage/uploads/qr_codes_peminjaman/' . $peminjaman->qr_code) }}" alt="" width="50px">
+              @else
+                <span style="font-size: 11px; color: #888;">{{ $peminjaman->kode_peminjaman }}</span>
+              @endif
             </div>
             <div>Kode : {{ $peminjaman->kode_peminjaman }}</div>
           </td>

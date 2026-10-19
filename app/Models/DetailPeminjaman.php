@@ -24,4 +24,9 @@ class DetailPeminjaman extends Model
 	{
 		return $this->belongsTo(Barang::class, 'kode_barang', 'kode_barang');
 	}
+
+	public function peminjaman(): BelongsTo
+	{
+		return $this->belongsTo(Peminjaman::class, 'kode_peminjaman', 'kode_peminjaman');
+	}
 }
