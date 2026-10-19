@@ -56,6 +56,7 @@ class Studio2Controller extends Controller
             'asal_pengadaan' => 'nullable|string|max:150',
             'catatan' => 'nullable|string',
             'status' => 'required|string',
+            'studio' => 'nullable|string|max:50',
             'foto' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
@@ -69,43 +70,22 @@ class Studio2Controller extends Controller
         $path = $request->file('foto') ? $request->file('foto')->store('barang', 'public') : null;
 
         // 🔹 Simpan data ke database
-Barang::create([
-
-    'uuid' => Str::uuid(),
-    'nama_barang' => $validated['nama_barang'],
-    'kode_barang' => $kode_barang,
-    'merk' => $validated['merk'] ?? null,
-    'nomor_seri' => $validated['nomor_seri'] ?? null,
-    'jumlah' => $validated['jumlah'] ?? null,
-    'kondisi' => $validated['kondisi'] ?? null,
-    'tahun_pengadaan' => $validated['tahun_pengadaan'] ?? null,
-    'asal_pengadaan' => $validated['asal_pengadaan'] ?? null,  // 🔹 ini penting
-    'catatan' => $validated['catatan'] ?? null,
-    'foto' => $path,
-    'status' => $validated['status'],
-    'studio' => $validated['studio'], // 🔹 ambil dari form
-    'limit' => 1,
-    'sisa_limit' => 1,
-    'qr_code' => 'QR-' . $kode_barang,
-]);
-
-            Barang::create([
+        Barang::create([
             'uuid' => Str::uuid(),
             'nama_barang' => $validated['nama_barang'],
-            'kode_barang' => $validated['kode_barang'],
+            'kode_barang' => $kode_barang,
             'merk' => $validated['merk'] ?? null,
             'nomor_seri' => $validated['nomor_seri'] ?? null,
-            'limit' => 1,
-            'sisa_limit' => 1,
+            'jumlah' => $validated['jumlah'] ?? null,
+            'kondisi' => $validated['kondisi'] ?? null,
+            'tahun_pengadaan' => $validated['tahun_pengadaan'] ?? null,
+            'asal_pengadaan' => $validated['asal_pengadaan'] ?? null,
+            'catatan' => $validated['catatan'] ?? null,
             'foto' => $path,
             'status' => $validated['status'],
-
-            // ✅ Ganti ruangan -> studio
-            'studio' => 'studio2', 
-
-            // Diperbaiki: Menggunakan kolom '' saat membuat data baru
-            'ruangan' => 'studio2', 
-
+            'studio' => $validated['studio'] ?? 'studio2',
+            'limit' => 1,
+            'sisa_limit' => 1,
         ]);
 
         return redirect()->route('studio2.index')->with('success', 'Data berhasil ditambahkan!');
