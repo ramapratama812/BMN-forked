@@ -13,7 +13,7 @@
 
 
   <link rel="shortcut icon" href="{{ asset('img/assets/bg_esimba.png') }}" type="image/x-icon">
-  <title>ESIMPR0D - Password</title>
+  <title>@yield('title', 'ESIMBA - Password')</title>
 
   @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

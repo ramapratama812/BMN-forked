@@ -1,4 +1,5 @@
 @extends('auth.template')
+@section('title', 'ESIMBA - Verifikasi Password')
 
 @section('content')
 <style>
