@@ -201,9 +201,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::prefix('admin/bmn')->middleware(['auth', 'verified.password', 'role:superadmin,admin'])->group(function () {
 
-      // Route untuk download template csv
+      // Route untuk download template csv dan excel
       Route::prefix('template')->group(function () {
         Route::get('/csv', [BmnController::class, 'downloadTemplateCsv'])->name('bmn.template.csv');
+        Route::get('/excel', [BmnController::class, 'downloadTemplateExcel'])->name('bmn.template.excel');
+      });
+
+      // Route untuk impor data barang dari csv
+      Route::prefix('impor')->group(function () {
+        Route::post('/csv', [BmnController::class, 'importCsv'])->name('bmn.import.csv');
       });
 
       // Route untuk Ruangan BMN

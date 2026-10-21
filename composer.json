@@ -12,6 +12,7 @@
         "laravel/tinker": "^2.9",
         "laravolt/avatar": "^6.0",
         "mckenziearts/laravel-notify": "^2.5",
+        "phpoffice/phpspreadsheet": "^5.10",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "symfony/finder": "^7.2"
     },

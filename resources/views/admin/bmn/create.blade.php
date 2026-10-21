@@ -31,6 +31,17 @@
                             <h3 class="font-bold text-gray-800">Penempatan Barang</h3>
                         </div>
 
+                        <div>
+                            <input type="file" name="file_csv" id="file_import_csv" accept=".csv,text/csv"
+                                class="hidden">
+
+                            <button type="button" onclick="document.getElementById('file_import_csv').click()"
+                                class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors">
+                                <i class="fa-solid fa-file-csv"></i>
+                                Impor CSV
+                            </button>
+                        </div>
+
                         <div class="p-6 grid grid-cols-1 gap-6">
                             {{-- 1. PILIHAN TIPE PENEMPATAN --}}
                             <div>
@@ -375,6 +386,35 @@
             setupPreview('fotoPosisi', 'fotoPosisiPreview', 'posisiPreviewContainer', 'posisiLabel');
         });
     </script>
+
+    {{-- script buat import data dari csv --}}
+    <script>
+        document.getElementById('file_import_csv').addEventListener('change', function() {
+            if (!this.files || this.files.length === 0) {
+                return;
+            }
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = @json(route('bmn.import.csv'));
+            form.enctype = 'multipart/form-data';
+            form.style.display = 'none';
+
+            const token = document.createElement('input');
+            token.type = 'hidden';
+            token.name = '_token';
+            token.value = @json(csrf_token());
+
+            form.appendChild(token);
+
+            // Pindahkan input file ke form impor.
+            form.appendChild(this);
+            document.body.appendChild(form);
+
+            form.submit();
+        });
+    </script>
+
 
     <style>
         .animate-fade-in-down {

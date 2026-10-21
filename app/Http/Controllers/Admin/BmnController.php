@@ -19,6 +19,15 @@ use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Illuminate\Validation\Rule;
 use App\Models\PerawatanInventaris;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
+use PhpOffice\PhpSpreadsheet\NamedRange;
+use PhpOffice\PhpSpreadsheet\WorkSheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+
 class BmnController extends Controller
 {
     private function tentukanKondisi($persentase)
@@ -713,7 +722,7 @@ class BmnController extends Controller
             ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 
-    // templat download template csv buat impor barang bmn (baris yang harus diisi dan contoh)
+    // download template csv buat impor barang bmn (baris yang harus diisi dan contoh)
     public function downloadTemplateCsv ()
     {
       $filename = 'template_impor_barang_bmn.csv';
@@ -769,5 +778,515 @@ class BmnController extends Controller
       }, $filename, [
           'Content-Type' => 'text/csv; charset=UTF-8',
       ]);
+    }
+
+    // download template excel
+    public function downloadTemplateExcel()
+    {
+        $spreadsheet = new Spreadsheet();
+
+        // Sheet utama untuk input barang
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Template Barang');
+
+        $headers = [
+            'nama_barang',
+            'nup',
+            'kode_barang',
+            'kategori',
+            'tipe_penempatan',
+            'ruangan_pilihan',
+            'user_id',
+            'unit_kerja_pilihan',
+            'merk',
+            'nomor_seri',
+            'jumlah',
+            'persentase_kondisi',
+            'tanggal_perolehan',
+            'nilai_perolehan',
+            'asal_pengadaan',
+            'catatan',
+        ];
+
+        $sheet->fromArray($headers, null, 'A1');
+
+        $sheet->getStyle('A1:P1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:P1')->getAlignment()
+            ->setHorizontal('center');
+
+        $sheet->freezePane('A2');
+        $sheet->setAutoFilter('A1:P501');
+
+        // Atur lebar kolom
+        $widths = [
+            'A' => 28, 'B' => 15, 'C' => 22, 'D' => 22,
+            'E' => 20, 'F' => 25, 'G' => 25, 'H' => 25,
+            'I' => 18, 'J' => 22, 'K' => 12, 'L' => 22,
+            'M' => 20, 'N' => 20, 'O' => 22, 'P' => 30,
+        ];
+
+        foreach ($widths as $column => $width) {
+            $sheet->getColumnDimension($column)->setWidth($width);
+        }
+
+        // Kolom teks: cegah NUP/kode/nomor seri menjadi notasi ilmiah.
+        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'O', 'P'] as $column) {
+            $sheet->getStyle("{$column}2:{$column}501")
+                ->getNumberFormat()->setFormatCode('@');
+        }
+
+        // Format tanggal ISO: yyyy-mm-dd.
+        $sheet->getStyle('M2:M501')
+            ->getNumberFormat()->setFormatCode('yyyy-mm-dd');
+
+        $sheet->getStyle('K2:K501')
+            ->getNumberFormat()->setFormatCode('0');
+
+        $sheet->getStyle('L2:L501')
+            ->getNumberFormat()->setFormatCode('0');
+
+        $sheet->getStyle('N2:N501')
+            ->getNumberFormat()->setFormatCode('#,##0');
+
+        // Sheet referensi dropdown, diambil dari database.
+        $refSheet = $spreadsheet->createSheet();
+        $refSheet->setTitle('Referensi');
+
+        $lists = [
+            'DaftarKategori' => [
+                'column' => 'A',
+                'values' => BmnKategori::orderBy('nama_kategori')
+                    ->pluck('nama_kategori')->all(),
+            ],
+            'DaftarRuangan' => [
+                'column' => 'B',
+                'values' => BmnRuangan::orderBy('nama_ruangan')
+                    ->pluck('nama_ruangan')->all(),
+            ],
+            'DaftarPengguna' => [
+                'column' => 'C',
+                'values' => Pengguna::orderBy('nama')
+                    ->pluck('nama')->all(),
+            ],
+            'DaftarUnitKerja' => [
+                'column' => 'D',
+                'values' => UnitKerja::orderBy('nama_unit_kerja')
+                    ->pluck('nama_unit_kerja')->all(),
+            ],
+        ];
+
+        foreach ($lists as $name => $list) {
+            $column = $list['column'];
+            $values = $list['values'];
+
+            // Named range tidak boleh mengarah ke rentang kosong.
+            if (empty($values)) {
+                $values = [''];
+            }
+
+            foreach ($values as $index => $value) {
+                $refSheet->setCellValue(
+                    $column . ($index + 1),
+                    $value
+                );
+            }
+
+            $lastRow = count($values);
+
+            $spreadsheet->addNamedRange(
+                new NamedRange(
+                    $name,
+                    $refSheet,
+                    '$' . $column . '$1:$' . $column . '$' . $lastRow
+                )
+            );
+        }
+
+        // Pasang dropdown pada baris 2 sampai 501.
+        $dropdowns = [
+            'D' => '=DaftarKategori',
+            'F' => '=DaftarRuangan',
+            'G' => '=DaftarPengguna',
+            'H' => '=DaftarUnitKerja',
+        ];
+
+        for ($row = 2; $row <= 501; $row++) {
+            foreach ($dropdowns as $column => $formula) {
+                $validation = $sheet->getCell("{$column}{$row}")
+                    ->getDataValidation();
+
+                $validation->setType(DataValidation::TYPE_LIST);
+                $validation->setErrorStyle(DataValidation::STYLE_STOP);
+                $validation->setAllowBlank(true);
+                $validation->setShowInputMessage(true);
+                $validation->setShowErrorMessage(true);
+                $validation->setPromptTitle('Pilih data');
+                $validation->setPrompt(
+                    'Pilih nilai dari daftar yang tersedia.'
+                );
+                $validation->setErrorTitle('Pilihan tidak valid');
+                $validation->setError(
+                    'Gunakan salah satu pilihan dari dropdown.'
+                );
+                $validation->setFormula1($formula);
+            }
+
+            // Tipe penempatan hanya boleh lokasi atau pengguna.
+            $validation = $sheet->getCell("E{$row}")
+                ->getDataValidation();
+
+            $validation->setType(DataValidation::TYPE_LIST);
+            $validation->setErrorStyle(DataValidation::STYLE_STOP);
+            $validation->setAllowBlank(false);
+            $validation->setShowErrorMessage(true);
+            $validation->setErrorTitle('Tipe penempatan tidak valid');
+            $validation->setError(
+                'Pilih lokasi atau pengguna.'
+            );
+            $validation->setFormula1('"lokasi,pengguna"');
+        }
+
+        // Tambahkan sheet petunjuk.
+        $guide = $spreadsheet->createSheet();
+        $guide->setTitle('Petunjuk');
+
+        $instructions = [
+            ['PETUNJUK PENGISIAN TEMPLATE BMN'],
+            ['1. Isi data barang mulai dari baris 2 pada sheet Template Barang.'],
+            ['2. Jangan mengubah atau menghapus nama header pada baris 1.'],
+            ['3. Kolom tipe_penempatan hanya berisi lokasi atau pengguna.'],
+            ['4. Isi ruangan_pilihan untuk penempatan lokasi.'],
+            ['5. Isi user_id dengan nama pengguna jika tipe_penempatan adalah pengguna.'],
+            ['6. Kategori, ruangan, pengguna, dan unit kerja dipilih dari dropdown.'],
+            ['7. Isi tanggal dengan format yyyy-mm-dd, misalnya 2026-10-19.'],
+            ['8. Kolom kode_barang boleh dikosongkan jika sistem membuat kode otomatis.'],
+            ['9. Saat akan mengimpor, simpan atau ekspor sheet Template Barang sebagai CSV.'],
+            ['10. Pastikan baris contoh tidak ditambahkan; template ini dimulai dengan baris data kosong.'],
+        ];
+
+        $guide->fromArray($instructions, null, 'A1');
+        $guide->getStyle('A1')->getFont()->setBold(true);
+        $guide->getColumnDimension('A')->setWidth(100);
+        $guide->getStyle('A1:A11')->getAlignment()->setWrapText(true);
+
+        // Sheet referensi disembunyikan dari pengguna.
+        $refSheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
+
+        // Mulai dengan sheet template saat file dibuka.
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'bmn_template_');
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($tempFile);
+
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
+
+        return response()->download(
+            $tempFile,
+            'template_impor_barang_bmn.xlsx',
+            [
+                'Content-Type' =>
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ]
+        )->deleteFileAfterSend(true);
+    }
+
+    // import csv barang bmn
+    public function importCsv (Request $request)
+    {
+      $request->validate([
+          'file_csv' => 'required|file|mimes:csv,txt|max:5120',
+      ], [
+          'file_csv.required' => 'Silakan pilih file CSV terlebih dahulu.',
+          'file_csv.mimes' => 'File harus berformat CSV.',
+          'file_csv.max' => 'Ukuran file maksimal 5 MB.',
+      ]);
+
+      $file = $request->file('file_csv');
+      $handle = fopen($file->getRealPath(), 'r');
+
+      if (!$handle) {
+          return back()->withErrors([
+              'file_csv' => 'File CSV tidak dapat dibaca.',
+          ]);
+      }
+
+      try {
+          $headerLine = fgets($handle);
+
+          if ($headerLine === false) {
+              throw new \RuntimeException('File CSV kosong.');
+          }
+
+          // Deteksi pemisah koma atau titik koma.
+          $delimiter = substr_count($headerLine, ';') >
+              substr_count($headerLine, ',') ? ';' : ',';
+
+          rewind($handle);
+
+          $headers = fgetcsv($handle, 0, $delimiter);
+
+          if (!$headers) {
+              throw new \RuntimeException('Header CSV tidak ditemukan.');
+          }
+
+          // Hilangkan BOM UTF-8 dan spasi pada header.
+          $headers[0] = preg_replace('/^\xEF\xBB\xBF/', '', $headers[0]);
+          $headers = array_map(
+              fn ($header) => trim((string) $header),
+              $headers
+          );
+
+          $requiredHeaders = [
+              'nama_barang',
+              'nup',
+              'kode_barang',
+              'kategori',
+              'tipe_penempatan',
+              'ruangan_pilihan',
+              'user_id',
+              'unit_kerja_pilihan',
+              'merk',
+              'nomor_seri',
+              'jumlah',
+              'persentase_kondisi',
+              'tanggal_perolehan',
+              'nilai_perolehan',
+              'asal_pengadaan',
+              'catatan',
+          ];
+
+          $missingHeaders = array_diff($requiredHeaders, $headers);
+
+          if (!empty($missingHeaders)) {
+              throw new \RuntimeException(
+                  'Header CSV tidak sesuai template. Kolom yang tidak ditemukan: ' .
+                  implode(', ', $missingHeaders)
+              );
+          }
+
+          $rows = [];
+          $errors = [];
+          $seenNup = [];
+          $seenCodes = [];
+          $line = 1;
+
+          while (($values = fgetcsv($handle, 0, $delimiter)) !== false) {
+              $line++;
+
+              if ($values === [null] || $values === []) {
+                  continue;
+              }
+
+              if (count($values) !== count($headers)) {
+                  $errors[] = "Baris {$line}: jumlah kolom tidak sesuai header.";
+                  continue;
+              }
+
+              $row = array_combine($headers, $values);
+
+              foreach ($row as $key => $value) {
+                  $row[$key] = trim((string) ($value ?? ''));
+              }
+
+              // Abaikan baris yang benar-benar kosong.
+              if (count(array_filter($row, fn ($v) => $v !== '')) === 0) {
+                  continue;
+              }
+
+              if (count($rows) >= 500) {
+                  $errors[] = 'Maksimal 500 baris data per impor.';
+                  break;
+              }
+
+              $validator = Validator::make($row, [
+                  'nama_barang' => 'required|string|max:255',
+                  'nup' => 'required|string|max:255',
+                  'kode_barang' => 'nullable|string|max:255',
+                  'kategori' => 'required|string|max:255',
+                  'tipe_penempatan' => 'required|in:lokasi,pengguna',
+                  'ruangan_pilihan' => 'nullable|string|max:255',
+                  'user_id' => 'nullable|string|max:255',
+                  'unit_kerja_pilihan' => 'required|exists:unit_kerjas,nama_unit_kerja',
+                  'merk' => 'nullable|string|max:255',
+                  'nomor_seri' => 'nullable|string|max:255',
+                  'jumlah' => 'required|integer|min:1',
+                  'persentase_kondisi' => 'required|numeric|min:0|max:100',
+                  'tanggal_perolehan' => 'nullable|date',
+                  'nilai_perolehan' => 'nullable|numeric|min:0',
+                  'asal_pengadaan' => 'nullable|string|max:255',
+                  'catatan' => 'nullable|string',
+              ]);
+
+              if ($validator->fails()) {
+                  foreach ($validator->errors()->all() as $message) {
+                      $errors[] = "Baris {$line}: {$message}";
+                  }
+                  continue;
+              }
+
+              if (!BmnKategori::where('nama_kategori', $row['kategori'])->exists()) {
+                  $errors[] = "Baris {$line}: kategori '{$row['kategori']}' tidak ditemukan.";
+              }
+
+              if ($row['tipe_penempatan'] === 'lokasi') {
+                  if (
+                      $row['ruangan_pilihan'] === '' ||
+                      !BmnRuangan::where('nama_ruangan', $row['ruangan_pilihan'])->exists()
+                  ) {
+                      $errors[] = "Baris {$line}: ruangan tidak ditemukan.";
+                  }
+              } else {
+                  if (
+                      $row['user_id'] === '' ||
+                      !Pengguna::where('nama', $row['user_id'])->exists()
+                  ) {
+                      $errors[] = "Baris {$line}: pengguna tidak ditemukan.";
+                  }
+              }
+
+              // NUP harus unik untuk nama barang yang sama.
+              $nupKey = mb_strtolower($row['nama_barang'] . '|' . $row['nup']);
+
+              if (isset($seenNup[$nupKey])) {
+                  $errors[] = "Baris {$line}: kombinasi nama barang dan NUP duplikat di CSV.";
+              } elseif (
+                  BmnBarang::where('nama_barang', $row['nama_barang'])
+                      ->where('nup', $row['nup'])
+                      ->exists()
+              ) {
+                  $errors[] = "Baris {$line}: kombinasi nama barang dan NUP sudah terdaftar.";
+              }
+
+              $seenNup[$nupKey] = true;
+
+              // Kode barang boleh kosong agar dibuat otomatis.
+              if ($row['kode_barang'] !== '') {
+                  if (
+                      isset($seenCodes[$row['kode_barang']]) ||
+                      BmnBarang::where('kode_barang', $row['kode_barang'])->exists()
+                  ) {
+                      $errors[] = "Baris {$line}: kode barang '{$row['kode_barang']}' sudah digunakan.";
+                  }
+
+                  $seenCodes[$row['kode_barang']] = true;
+              }
+
+              $row['_line'] = $line;
+              $rows[] = $row;
+          }
+
+          if (count($rows) === 0 && empty($errors)) {
+              $errors[] = 'Tidak ada baris data untuk diimpor.';
+          }
+
+          if (!empty($errors)) {
+              return back()->withErrors($errors);
+          }
+
+          $createdQrFiles = [];
+
+          try {
+              DB::transaction(function () use ($rows, &$createdQrFiles) {
+                  Storage::disk('public')->makeDirectory('bmn/qrcode');
+
+                  foreach ($rows as $row) {
+                      $kode = $row['kode_barang'] !== ''
+                          ? $row['kode_barang']
+                          : $this->generateUniqueKode();
+
+                      // Pengaman tambahan untuk nama file QR.
+                      $safeKode = preg_replace('/[^A-Za-z0-9_-]/', '_', $kode);
+
+                      if ($safeKode === '') {
+                          throw new \RuntimeException(
+                              "Kode barang tidak valid pada baris {$row['_line']}."
+                          );
+                      }
+
+                      $qrPath = 'bmn/qrcode/qr_' . $safeKode . '.png';
+
+                      if (Storage::disk('public')->exists($qrPath)) {
+                          throw new \RuntimeException(
+                              "File QR untuk kode {$kode} sudah ada."
+                          );
+                      }
+
+                      $finalRuangan = $row['tipe_penempatan'] === 'lokasi'
+                          ? $row['ruangan_pilihan']
+                          : $row['user_id'];
+
+                      $data = [
+                          'uuid' => (string) Str::uuid(),
+                          'nama_barang' => $row['nama_barang'],
+                          'nup' => $row['nup'],
+                          'kode_barang' => $kode,
+                          'kategori' => $row['kategori'],
+                          'ruangan' => $finalRuangan,
+                          'unit_kerja' => $row['unit_kerja_pilihan'],
+                          'merk' => $row['merk'] !== '' ? $row['merk'] : null,
+                          'nomor_seri' => $row['nomor_seri'] !== '' ? $row['nomor_seri'] : null,
+                          'jumlah' => (int) $row['jumlah'],
+                          'persentase_kondisi' => $row['persentase_kondisi'],
+                          'kondisi' => $this->tentukanKondisi(
+                              (float) $row['persentase_kondisi']
+                          ),
+                          'tanggal_perolehan' => $row['tanggal_perolehan'] !== ''
+                              ? $row['tanggal_perolehan']
+                              : null,
+                          'nilai_perolehan' => $row['nilai_perolehan'] !== ''
+                              ? $row['nilai_perolehan']
+                              : null,
+                          'asal_pengadaan' => $row['asal_pengadaan'] !== ''
+                              ? $row['asal_pengadaan']
+                              : null,
+                          'catatan' => $row['catatan'] !== ''
+                              ? $row['catatan']
+                              : null,
+                          'qr_code' => $qrPath,
+                      ];
+
+                      // QR menggunakan route scan yang sama dengan store().
+                      $scanUrl = route('user.inventaris.scan', $kode);
+
+                      QrCode::format('png')
+                          ->size(300)
+                          ->margin(2)
+                          ->generate(
+                              $scanUrl,
+                              Storage::disk('public')->path($qrPath)
+                          );
+
+                      $createdQrFiles[] = $qrPath;
+
+                      BmnBarang::create($data);
+                  }
+              });
+          } catch (\Throwable $e) {
+              foreach ($createdQrFiles as $path) {
+                  Storage::disk('public')->delete($path);
+              }
+
+              report($e);
+
+              return back()->withErrors([
+                  'file_csv' => 'Impor gagal saat menyimpan data. Tidak ada data yang diimpor. Periksa log aplikasi untuk detail teknis.',
+              ]);
+          }
+
+          return redirect()
+              ->route('barang.bmn_index')
+              ->with('success', count($rows) . ' data barang berhasil diimpor.');
+      } catch (\RuntimeException $e) {
+          return back()->withErrors([
+              'file_csv' => $e->getMessage(),
+          ]);
+      } finally {
+          if (is_resource($handle)) {
+              fclose($handle);
+          }
+      }
     }
 }
