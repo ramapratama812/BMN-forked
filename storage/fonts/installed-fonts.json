@@ -1,0 +1,15 @@
+{
+    "poppins": {
+        "normal": "D:\\laragon\\www\\esimprod2.0\\storage\\fonts\/poppins_normal_16246dd83ca984bde432c3105fd17106",
+        "bold": "poppins_bold_7a9de2dc73aab5b0adbd82f916076787"
+    },
+    "poppinsregular": {
+        "normal": "poppinsregular_normal_16246dd83ca984bde432c3105fd17106"
+    },
+    "poppins-regular": {
+        "normal": "poppins_regular_normal_bb5a0be224a108d079f7153799ec7bec"
+    },
+    "gotham black": {
+        "bold": "gotham_black_bold_a08f80078b6016d87f579dcebb06b386"
+    }
+}
