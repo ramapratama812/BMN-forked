@@ -155,19 +155,29 @@ class InventarisUserController extends Controller
             ->with('success', 'Laporan kerusakan berhasil dikirim.');
     }
 
-    public function scanRak($nama_rak)
+    public function scanRak($uuid)
     {
-        $nama_rak = urldecode($nama_rak);
+        // Cari ruangan berdasarkan uuid
+        $ruangan = \App\Models\BmnRuangan::where('uuid', $uuid)->first();
 
-        // Cari barang, load perawatan, dan kecualikan yang sudah di 'penghapusan'
+        if (!$ruangan) {
+            return view('user.inventaris.hasil_scan_rak', [
+                'barang'    => collect(),
+                'nama_rak'  => 'Tidak Dikenal',
+            ]);
+        }
+
+        $nama_rak = $ruangan->nama_ruangan;
+
+        // Cari barang di ruangan ini, kecualikan yang sudah di 'penghapusan'
         $barang = \App\Models\BmnBarang::with('perawatan')
             ->whereDoesntHave('perawatan', function ($q) {
                 $q->where('jenis_perawatan', 'penghapusan');
             })->where('ruangan', $nama_rak)->get();
 
         return view('user.inventaris.hasil_scan_rak', [
-            'barang' => $barang,
-            'nama_rak' => $nama_rak
+            'barang'   => $barang,
+            'nama_rak' => $nama_rak,
         ]);
     }
 

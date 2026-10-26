@@ -417,4 +417,44 @@ class BarangController extends Controller
         $pdf = Pdf::loadView('admin.barang.qrcode_ruangan_pdf', $data)->setPaper('a4', 'portrait');
         return $pdf->stream('QRCode-Ruangan-' . time() . '.pdf');
     }
+
+    /**
+     * Regenerate QR Code ruangan secara batch (AJAX).
+     * Menggunakan SvgImageBackEnd (tidak butuh Imagick).
+     * Return JSON: { processed, total, done }
+     */
+    public function regenerateQrRuangan(Request $request)
+    {
+        set_time_limit(120);
+
+        $offset = max(0, (int) $request->input('offset', 0));
+        $limit  = max(1, min(100, (int) $request->input('limit', 50)));
+
+        $total      = BmnRuangan::count();
+        $ruangans   = BmnRuangan::orderBy('id')->skip($offset)->take($limit)->get();
+
+        Storage::disk('public')->makeDirectory('bmn/qrcode_ruangan');
+
+        $renderer = new \BaconQrCode\Renderer\ImageRenderer(
+            new \BaconQrCode\Renderer\RendererStyle\RendererStyle(300, 2),
+            new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+        );
+        $writer = new \BaconQrCode\Writer($renderer);
+
+        foreach ($ruangans as $ruangan) {
+            $qrName  = 'qr_ruangan_' . $ruangan->uuid . '.svg';
+            $qrPath  = 'bmn/qrcode_ruangan/' . $qrName;
+            $scanUrl = route('user.inventaris.rak', $ruangan->uuid);
+
+            Storage::disk('public')->put($qrPath, $writer->writeString($scanUrl));
+        }
+
+        $processed = $offset + $ruangans->count();
+
+        return response()->json([
+            'processed' => $processed,
+            'total'     => $total,
+            'done'      => $processed >= $total,
+        ]);
+    }
 }

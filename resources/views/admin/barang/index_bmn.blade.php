@@ -498,12 +498,24 @@
                           </div>
                       </form>
 
-                      {{-- TOMBOL REGENERATE QR CODE --}}
+                      {{-- TOMBOL REGENERATE QR CODE BARANG --}}
                       <div class="mt-4">
                           <button type="button" onclick="startRegenerateQr()"
                               class="w-full relative group overflow-hidden bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 rounded-2xl flex items-center justify-center gap-3 hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-200/50 active:scale-[0.98]">
                               <i class="fa-solid fa-arrows-rotate text-lg group-hover:rotate-180 transition-transform duration-500"></i>
-                              <span class="font-bold text-sm tracking-wide">Regenerate Semua QR Code</span>
+                              <span class="font-bold text-sm tracking-wide">Regenerate QR Barang</span>
+                              <div
+                                  class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white/10 opacity-40 group-hover:animate-shine">
+                              </div>
+                          </button>
+                      </div>
+
+                      {{-- TOMBOL REGENERATE QR CODE RUANGAN --}}
+                      <div class="mt-3">
+                          <button type="button" onclick="startRegenerateQrRuangan()"
+                              class="w-full relative group overflow-hidden bg-gradient-to-r from-teal-500 to-cyan-500 text-white p-4 rounded-2xl flex items-center justify-center gap-3 hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-200/50 active:scale-[0.98]">
+                              <i class="fa-solid fa-door-open text-lg group-hover:rotate-12 transition-transform duration-300"></i>
+                              <span class="font-bold text-sm tracking-wide">Regenerate QR Ruangan</span>
                               <div
                                   class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white/10 opacity-40 group-hover:animate-shine">
                               </div>
@@ -514,7 +526,7 @@
           </div>
       </div>
 
-      {{-- MODAL PROGRESS REGENERATE QR --}}
+      {{-- MODAL PROGRESS REGENERATE QR BARANG --}}
       <div id="regen-qr-modal" tabindex="-1"
           class="hidden fixed inset-0 z-[60] flex justify-center items-center backdrop-blur-sm bg-gray-900/60 transition-all">
           <div class="relative w-full max-w-sm mx-4 animate-card">
@@ -541,6 +553,36 @@
                   {{-- Tombol tutup (hanya tampil setelah selesai) --}}
                   <button id="regen-close-btn" onclick="closeRegenModal()"
                       class="hidden w-full py-3 px-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-2xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-200/50">
+                      <i class="fa-solid fa-check mr-2"></i> Selesai
+                  </button>
+              </div>
+          </div>
+      </div>
+
+      {{-- MODAL PROGRESS REGENERATE QR RUANGAN --}}
+      <div id="regen-ruangan-modal" tabindex="-1"
+          class="hidden fixed inset-0 z-[60] flex justify-center items-center backdrop-blur-sm bg-gray-900/60 transition-all">
+          <div class="relative w-full max-w-sm mx-4 animate-card">
+              <div class="relative bg-white rounded-[2.5rem] shadow-2xl p-8 text-center border border-gray-100 overflow-hidden">
+                  <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-400 via-cyan-500 to-teal-400"></div>
+
+                  <div id="regen-ruangan-icon-wrap" class="w-20 h-20 bg-teal-50 text-teal-500 rounded-full flex items-center justify-center mx-auto mb-5">
+                      <i id="regen-ruangan-icon" class="fa-solid fa-arrows-rotate text-3xl"></i>
+                  </div>
+
+                  <h3 id="regen-ruangan-title" class="mb-1 text-lg font-bold text-gray-800">Regenerate QR Ruangan</h3>
+                  <p id="regen-ruangan-subtitle" class="mb-6 text-sm text-gray-500">Sedang memproses data ruangan...</p>
+
+                  <div class="w-full bg-gray-100 rounded-full h-3 mb-2 overflow-hidden">
+                      <div id="regen-ruangan-bar"
+                          class="h-3 rounded-full bg-gradient-to-r from-teal-400 to-cyan-500 transition-all duration-300"
+                          style="width: 0%">
+                      </div>
+                  </div>
+                  <p id="regen-ruangan-count" class="text-xs text-gray-400 mb-6">0 / 0 ruangan</p>
+
+                  <button id="regen-ruangan-close-btn" onclick="closeRegenRuanganModal()"
+                      class="hidden w-full py-3 px-6 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold rounded-2xl hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg shadow-teal-200/50">
                       <i class="fa-solid fa-check mr-2"></i> Selesai
                   </button>
               </div>
@@ -624,7 +666,7 @@
               form.action = url;
           }
 
-          // 4. Regenerate QR Code (batch AJAX)
+          // 4. Regenerate QR Code Barang (batch AJAX)
           const REGEN_URL   = '{{ route('bmn.regenerate_qr') }}';
           const CSRF_TOKEN  = '{{ csrf_token() }}';
           const BATCH_SIZE  = 50;
@@ -717,6 +759,84 @@
               document.getElementById('regen-qr-modal').classList.remove('flex');
 
               // Bersihkan sisa backdrop dan overflow dari Flowbite
+              document.querySelectorAll('[modal-backdrop]').forEach(el => el.remove());
+              document.body.classList.remove('overflow-hidden');
+              document.body.style.overflow = '';
+          }
+
+          // 5. Regenerate QR Code Ruangan (batch AJAX)
+          const REGEN_RUANGAN_URL = '{{ route('barang.regenerate_qr_ruangan') }}';
+
+          function startRegenerateQrRuangan() {
+              if (!confirm('Yakin ingin regenerate seluruh QR Code ruangan?\nProses ini akan membuat QR baru berbasis UUID untuk semua ruangan.')) return;
+
+              try {
+                  const printModalInstance = FlowbiteInstances.getInstance('Modal', 'print-modal');
+                  if (printModalInstance) printModalInstance.hide();
+                  else throw new Error('no instance');
+              } catch (e) {
+                  const printModal = document.getElementById('print-modal');
+                  if (printModal) { printModal.classList.add('hidden'); printModal.setAttribute('aria-hidden', 'true'); }
+              }
+
+              resetRegenRuanganModal();
+              document.getElementById('regen-ruangan-modal').classList.remove('hidden');
+              document.getElementById('regen-ruangan-modal').classList.add('flex');
+
+              runBatchRuangan(0);
+          }
+
+          function runBatchRuangan(offset) {
+              fetch(REGEN_RUANGAN_URL, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-TOKEN': CSRF_TOKEN,
+                      'Accept': 'application/json',
+                  },
+                  body: JSON.stringify({ offset: offset, limit: BATCH_SIZE }),
+              })
+              .then(res => {
+                  if (!res.ok) throw new Error('Server error: ' + res.status);
+                  return res.json();
+              })
+              .then(data => {
+                  const pct = data.total > 0 ? Math.round((data.processed / data.total) * 100) : 0;
+                  document.getElementById('regen-ruangan-bar').style.width    = pct + '%';
+                  document.getElementById('regen-ruangan-count').textContent  = data.processed + ' / ' + data.total + ' ruangan (' + pct + '%)';
+
+                  if (data.done) {
+                      document.getElementById('regen-ruangan-icon').className      = 'fa-solid fa-check text-3xl';
+                      document.getElementById('regen-ruangan-icon-wrap').className = 'w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-5';
+                      document.getElementById('regen-ruangan-title').textContent   = 'Selesai!';
+                      document.getElementById('regen-ruangan-subtitle').textContent = 'Berhasil regenerate QR Code untuk ' + data.total + ' ruangan.';
+                      document.getElementById('regen-ruangan-close-btn').classList.remove('hidden');
+                  } else {
+                      runBatchRuangan(data.processed);
+                  }
+              })
+              .catch(err => {
+                  document.getElementById('regen-ruangan-title').textContent    = 'Terjadi Kesalahan';
+                  document.getElementById('regen-ruangan-subtitle').textContent = err.message;
+                  document.getElementById('regen-ruangan-icon').className       = 'fa-solid fa-triangle-exclamation text-3xl';
+                  document.getElementById('regen-ruangan-icon-wrap').className  = 'w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-5';
+                  document.getElementById('regen-ruangan-close-btn').classList.remove('hidden');
+              });
+          }
+
+          function resetRegenRuanganModal() {
+              document.getElementById('regen-ruangan-bar').style.width      = '0%';
+              document.getElementById('regen-ruangan-count').textContent    = '0 / 0 ruangan';
+              document.getElementById('regen-ruangan-title').textContent    = 'Regenerate QR Ruangan';
+              document.getElementById('regen-ruangan-subtitle').textContent = 'Sedang memproses data ruangan...';
+              document.getElementById('regen-ruangan-icon').className       = 'fa-solid fa-arrows-rotate text-3xl animate-spin';
+              document.getElementById('regen-ruangan-icon-wrap').className  = 'w-20 h-20 bg-teal-50 text-teal-500 rounded-full flex items-center justify-center mx-auto mb-5';
+              document.getElementById('regen-ruangan-close-btn').classList.add('hidden');
+          }
+
+          function closeRegenRuanganModal() {
+              document.getElementById('regen-ruangan-modal').classList.add('hidden');
+              document.getElementById('regen-ruangan-modal').classList.remove('flex');
               document.querySelectorAll('[modal-backdrop]').forEach(el => el.remove());
               document.body.classList.remove('overflow-hidden');
               document.body.style.overflow = '';

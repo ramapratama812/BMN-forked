@@ -63,6 +63,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/detail/{uuid}', [BarangController::class, 'show'])->name('barang.show');
         Route::get('/print-barang', [BarangController::class, 'printBarang'])->name('barang.print-barang');
         Route::get('/print-qr-ruangan', [BarangController::class, 'printQrRuangan'])->name('barang.print-qr-ruangan');
+        Route::post('/regenerate-qr-ruangan', [BarangController::class, 'regenerateQrRuangan'])->name('barang.regenerate_qr_ruangan');
         Route::get('/print-qrcode', [BarangController::class, 'printQrCode'])->name('barang.print-qrcode');
         Route::get('/result', [BarangController::class, 'search'])->name('barang.search');
         Route::get('jenis-barang/{jenisBarang:uuid}', [BarangController::class, 'jenisBarang'])->name('barang.jenis-barang');
