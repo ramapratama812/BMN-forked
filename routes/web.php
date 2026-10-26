@@ -251,6 +251,7 @@ Route::middleware(['auth'])->group(function () {
       // --- END ROUTES BARU ---
 
       Route::get('/qr-all/download', [BmnController::class, 'downloadQRAll'])->name('bmn.qr_all.download');
+      Route::post('/regenerate-qr', [BmnController::class, 'regenerateQrCodes'])->name('bmn.regenerate_qr');
       Route::get('/mcr', [BmnController::class, 'index'])->name('bmn.mcr.index')->defaults('ruangan', 'mcr');
       Route::get('/studio', [BmnController::class, 'index'])->name('bmn.studio.index')->defaults('ruangan', 'studio');
       Route::get('/peralatan', [BmnController::class, 'index'])->name('bmn.peralatan.index')->defaults('ruangan', 'peralatan');

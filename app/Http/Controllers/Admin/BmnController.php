@@ -457,11 +457,17 @@ class BmnController extends Controller
             $validated['posisi'] = $path;
         }
 
-        $qrName = 'qr_' . $validated['kode_barang'] . '.png';
-        $qrPath = 'bmn/qrcode/' . $qrName;
-        $scanUrl = route('user.inventaris.scan', $validated['kode_barang']);
-        QrCode::format('png')->size(300)->margin(2)
-            ->generate($scanUrl, Storage::disk('public')->path($qrPath));
+        // Generate QR Code menggunakan SvgImageBackEnd (cepat, tidak butuh Imagick)
+        $qrRenderer = new \BaconQrCode\Renderer\ImageRenderer(
+            new \BaconQrCode\Renderer\RendererStyle\RendererStyle(300, 2),
+            new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+        );
+        $qrWriter  = new \BaconQrCode\Writer($qrRenderer);
+        $qrName    = 'qr_' . $validated['uuid'] . '.svg';
+        $qrPath    = 'bmn/qrcode/' . $qrName;
+        $scanUrl   = route('user.inventaris.scan', $validated['uuid']);
+        Storage::disk('public')->makeDirectory('bmn/qrcode');
+        Storage::disk('public')->put($qrPath, $qrWriter->writeString($scanUrl));
         $validated['qr_code'] = $qrPath;
 
         BmnBarang::create($validated);
@@ -585,12 +591,20 @@ class BmnController extends Controller
             $validated['posisi'] = $path;
         }
 
-        if ($request->hasFile('foto') || $request->hasFile('posisi') || $request->kode_barang !== $barang->kode_barang) {
+        // QR code di-generate berdasarkan uuid (stabil, tidak berubah saat kode_barang diubah)
+        // Regenerate hanya jika QR belum ada
+        if (!$barang->qr_code || !Storage::disk('public')->exists($barang->qr_code)) {
             if ($barang->qr_code) Storage::disk('public')->delete($barang->qr_code);
-            $qrName = 'qr_' . $validated['kode_barang'] . '.png';
-            $qrPath = 'bmn/qrcode/' . $qrName;
-            $scanUrl = route('user.inventaris.scan', $validated['kode_barang']);
-            QrCode::format('png')->size(300)->margin(2)->generate($scanUrl, Storage::disk('public')->path($qrPath));
+            $qrRenderer = new \BaconQrCode\Renderer\ImageRenderer(
+                new \BaconQrCode\Renderer\RendererStyle\RendererStyle(300, 2),
+                new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+            );
+            $qrWriter  = new \BaconQrCode\Writer($qrRenderer);
+            $qrName    = 'qr_' . $barang->uuid . '.svg';
+            $qrPath    = 'bmn/qrcode/' . $qrName;
+            $scanUrl   = route('user.inventaris.scan', $barang->uuid);
+            Storage::disk('public')->makeDirectory('bmn/qrcode');
+            Storage::disk('public')->put($qrPath, $qrWriter->writeString($scanUrl));
             $validated['qr_code'] = $qrPath;
         }
 
@@ -711,5 +725,60 @@ class BmnController extends Controller
         return response($qr)
             ->header('Content-Type', 'image/png')
             ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+    }
+
+    /**
+     * Regenerate QR Code secara batch (AJAX).
+     * Menggunakan SvgImageBackEnd (tidak butuh Imagick, jauh lebih cepat).
+     * Menerima: offset, limit (default 50)
+     * Return JSON: { processed, total, done }
+     */
+    public function regenerateQrCodes(Request $request)
+    {
+        set_time_limit(120);
+
+        $offset = max(0, (int) $request->input('offset', 0));
+        $limit  = max(1, min(100, (int) $request->input('limit', 50)));
+
+        $total  = BmnBarang::count();
+
+        $barangList = BmnBarang::orderBy('id')
+            ->skip($offset)
+            ->take($limit)
+            ->get();
+
+        Storage::disk('public')->makeDirectory('bmn/qrcode');
+
+        // Gunakan BaconQrCode langsung dengan SvgImageBackEnd (tidak butuh Imagick)
+        $renderer = new \BaconQrCode\Renderer\ImageRenderer(
+            new \BaconQrCode\Renderer\RendererStyle\RendererStyle(300, 2),
+            new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+        );
+        $writer = new \BaconQrCode\Writer($renderer);
+
+        foreach ($barangList as $barang) {
+            // Hapus QR lama jika ada
+            if ($barang->qr_code && Storage::disk('public')->exists($barang->qr_code)) {
+                Storage::disk('public')->delete($barang->qr_code);
+            }
+
+            // Generate QR baru berdasarkan uuid — simpan sebagai SVG
+            $qrName  = 'qr_' . $barang->uuid . '.svg';
+            $qrPath  = 'bmn/qrcode/' . $qrName;
+            $scanUrl = route('user.inventaris.scan', $barang->uuid);
+
+            $svgData = $writer->writeString($scanUrl);
+            Storage::disk('public')->put($qrPath, $svgData);
+
+            $barang->update(['qr_code' => $qrPath]);
+        }
+
+        $processed = $offset + $barangList->count();
+
+        return response()->json([
+            'processed' => $processed,
+            'total'     => $total,
+            'done'      => $processed >= $total,
+        ]);
     }
 }

@@ -46,10 +46,11 @@ class InventarisUserController extends Controller
                 ->with('success', 'Menampilkan semua barang.');
         }
 
+        // Cari berdasarkan uuid (QR code berisi uuid)
         // Pastikan QR yang di scan bukan barang yang sudah di 'penghapusan'
         $barang = BmnBarang::whereDoesntHave('perawatan', function ($q) {
                 $q->where('jenis_perawatan', 'penghapusan');
-            })->where('kode_barang', $kode)->first();
+            })->where('uuid', $kode)->first();
 
         if ($barang) {
             // <-- Teruskan parameter 'from' ke halaman detail
