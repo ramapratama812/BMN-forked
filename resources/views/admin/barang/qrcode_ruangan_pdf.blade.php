@@ -19,25 +19,17 @@
             text-transform: uppercase;
         }
         .label-text { font-size: 14px; color: #555; margin-bottom: 10px; }
-        svg { width: 220px; height: 220px; }
     </style>
 </head>
 <body>
     @foreach($ruangans as $r)
         @php
-            $renderer = new \BaconQrCode\Renderer\ImageRenderer(
-                new \BaconQrCode\Renderer\RendererStyle\RendererStyle(220, 2),
-                new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
-            );
-            $writer  = new \BaconQrCode\Writer($renderer);
-            $scanUrl = route('user.inventaris.rak', $r->uuid);
-            $svgData = $writer->writeString($scanUrl);
-            // Hapus deklarasi XML agar aman sebagai inline SVG di HTML/DomPDF
-            $svgInline = preg_replace('/<\?xml[^>]*\?>/', '', $svgData);
+            $scanUrl   = route('user.inventaris.rak', $r->uuid);
+            $qrDataUri = \App\Helpers\QrCodeHelper::generatePngDataUri($scanUrl, 250, 3);
         @endphp
         <div class="qr-item">
             <div class="label-text">QR CODE INVENTARIS RUANGAN</div>
-            {!! $svgInline !!}
+            <img src="{{ $qrDataUri }}" width="220" height="220" alt="QR {{ $r->nama_ruangan }}">
             <div class="room-name">{{ $r->nama_ruangan }}</div>
         </div>
     @endforeach

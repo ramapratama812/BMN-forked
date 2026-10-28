@@ -143,8 +143,23 @@
                                     </div>
 
                                     <div class="qr-item">
-                                        @if ($b->qr_code && file_exists($qrPath))
-                                            <img src="{{ $qrPath }}" class="img-qr" alt="QR Code">
+                                        @php
+                                            // Gunakan helper GD untuk generate PNG QR (kompatibel DomPDF)
+                                            if ($b->qr_code && file_exists($qrPath)) {
+                                                if (str_ends_with($qrPath, '.svg')) {
+                                                    // File SVG: embed sebagai PNG via GD helper
+                                                    $qrScanUrl = route('user.inventaris.scan', $b->uuid);
+                                                    $qrSrc = \App\Helpers\QrCodeHelper::generatePngDataUri($qrScanUrl, 160, 2);
+                                                } else {
+                                                    $qrSrc = $qrPath;
+                                                }
+                                                $hasQr = true;
+                                            } else {
+                                                $hasQr = false;
+                                            }
+                                        @endphp
+                                        @if ($hasQr)
+                                            <img src="{{ $qrSrc }}" class="img-qr" alt="QR Code">
                                         @else
                                             <span style="color: #e74c3c; font-size: 8px;">QR KOSONG</span>
                                         @endif

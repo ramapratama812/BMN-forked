@@ -128,7 +128,15 @@
                   }
               @endphp
               @if($b->qr_code && file_exists($qrPath))
-                  <img src="{{ $qrPath }}" width="40px">
+                  @php
+                      if (str_ends_with($qrPath, '.svg')) {
+                          $qrScanUrl = route('user.inventaris.scan', $b->uuid);
+                          $qrSrc = \App\Helpers\QrCodeHelper::generatePngDataUri($qrScanUrl, 80, 2);
+                      } else {
+                          $qrSrc = $qrPath;
+                      }
+                  @endphp
+                  <img src="{{ $qrSrc }}" width="40px">
               @else
                   -
               @endif
