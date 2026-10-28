@@ -82,7 +82,15 @@ class BmnController extends Controller
             'nama_ruangan.unique'   => 'Nama ruangan sudah terdaftar, gunakan nama lain.',
         ]);
 
-        $ruangan->update(['nama_ruangan' => $request->nama_ruangan]);
+        $namaLama = $ruangan->nama_ruangan;
+        $namaBaru = $request->nama_ruangan;
+
+        $ruangan->update(['nama_ruangan' => $namaBaru]);
+
+        // Cascade: update semua barang yang tertaut pada ruangan ini
+        if ($namaLama !== $namaBaru) {
+            BmnBarang::where('ruangan', $namaLama)->update(['ruangan' => $namaBaru]);
+        }
 
         return response()->json(['success' => true]);
     }
@@ -141,7 +149,13 @@ class BmnController extends Controller
             'nama_kategori.unique'   => 'Nama kategori sudah terdaftar, gunakan nama lain.',
         ]);
 
-        $kategori->update(['nama_kategori' => $request->nama_kategori]);
+        $namaLama = $kategori->nama_kategori;
+        $namaBaru = $request->nama_kategori;
+        $kategori->update(['nama_kategori' => $namaBaru]);
+        // Cascade: update semua barang yang tertaut pada kategori ini
+        if ($namaLama !== $namaBaru) {
+            BmnBarang::where('kategori', $namaLama)->update(['kategori' => $namaBaru]);
+        }
 
         return response()->json(['success' => true]);
     }
@@ -315,7 +329,13 @@ class BmnController extends Controller
             'nama_unit_kerja.unique'   => 'Nama unit kerja sudah terdaftar, gunakan nama lain.',
         ]);
 
-        $unit_kerja->update(['nama_unit_kerja' => $request->nama_unit_kerja]);
+        $namaLama = $unit_kerja->nama_unit_kerja;
+        $namaBaru = $request->nama_unit_kerja;
+        $unit_kerja->update(['nama_unit_kerja' => $namaBaru]);
+        // Cascade: update semua barang yang tertaut pada unit_kerja ini
+        if ($namaLama !== $namaBaru) {
+            BmnBarang::where('unit_kerja', $namaLama)->update(['unit_kerja' => $namaBaru]);
+        }
 
         return response()->json(['success' => true]);
     }
