@@ -212,10 +212,11 @@
                                 </p>
                             </div>
 
-                            <input id="file-upload" name="foto" {{-- UBAH DARI 'file-upload' MENJADI 'foto' --}} type="file"
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                onchange="const name = this.files[0]?.name; document.getElementById('file-name').textContent = name ? 'Selected: ' + name : '';" />
+                            <input id="file-upload" name="foto[]" multiple accept="image/*" type="file"
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                         </div>
+                        <div id="file-error" class="text-red-500 text-sm mt-2 hidden bg-red-50 p-2 rounded border border-red-100"></div>
+                        <div id="image-preview-container" class="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-4"></div>
                     </div>
                     <div class="pt-2 flex flex-col-reverse sm:flex-row gap-3">
                         <a class="w-full sm:w-auto px-6 py-3 border border-slate-300 dark:border-slate-600 shadow-sm text-sm font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all text-center"
@@ -227,11 +228,129 @@
                             type="submit">
                             Kirim Laporan
                         </button>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
 
+    {{-- MODAL PREVIEW FOTO --}}
+    <div id="image-modal" class="fixed inset-0 z-[200] hidden bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <button type="button" onclick="closeModal()" class="absolute top-6 right-6 text-white hover:text-red-400 transition-colors z-[210]">
+            <span class="material-symbols-outlined text-4xl">close</span>
+        </button>
+        <img id="modal-image" src="" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain relative z-[205]">
+    </div>
+
+    <script>
+        const fileUpload = document.getElementById('file-upload');
+        const previewContainer = document.getElementById('image-preview-container');
+        const fileError = document.getElementById('file-error');
+        const fileNameDisplay = document.getElementById('file-name');
+        
+        let dt = new DataTransfer(); 
+
+        fileUpload.addEventListener('change', function(e) {
+            fileError.classList.add('hidden');
+            fileError.innerHTML = '';
+            
+            let files = e.target.files;
+            let errors = [];
+            
+            for (let i = 0; i < files.length; i++) {
+                let file = files[i];
+                
+                if (file.size > 4 * 1024 * 1024) {
+                    errors.push(`File "<b>${file.name}</b>" gagal ditambahkan: Maksimal 4 MB.`);
+                    continue;
+                }
+                
+                if (!file.type.startsWith('image/')) {
+                    errors.push(`File "<b>${file.name}</b>" gagal ditambahkan: Bukan format gambar.`);
+                    continue;
+                }
+                
+                dt.items.add(file);
+            }
+            
+            if (errors.length > 0) {
+                fileError.innerHTML = errors.join('<br>');
+                fileError.classList.remove('hidden');
+            }
+            
+            updateInputAndPreviews();
+        });
+
+        function updateInputAndPreviews() {
+            fileUpload.files = dt.files;
+            previewContainer.innerHTML = '';
+            
+            let count = dt.files.length;
+            fileNameDisplay.textContent = count > 0 ? count + ' gambar dipilih' : '';
+            
+            for (let i = 0; i < dt.files.length; i++) {
+                let file = dt.files[i];
+                let reader = new FileReader();
+                
+                reader.readAsDataURL(file);
+                reader.onload = function(e) {
+                    let div = document.createElement('div');
+                    div.className = 'relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm aspect-square bg-slate-50';
+                    
+                    let img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'w-full h-full object-cover';
+
+                    let openBtn = document.createElement('button');
+                    openBtn.type = 'button';
+                    openBtn.innerHTML = 'Buka';
+                    openBtn.className = 'absolute inset-0 m-auto w-16 h-8 bg-black/60 text-white rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-black/80 z-10';
+                    openBtn.onclick = function(event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openModal(e.target.result);
+                    };
+                    
+                    let btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.innerHTML = '×';
+                    btn.className = 'absolute top-1.5 right-1.5 bg-red-500/90 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 shadow-sm hover:bg-red-600 z-20';
+                    
+                    btn.onclick = function(event) {
+                        event.preventDefault(); 
+                        event.stopPropagation();
+                        removeFile(i);
+                    };
+                    
+                    div.appendChild(img);
+                    div.appendChild(openBtn);
+                    div.appendChild(btn);
+                    previewContainer.appendChild(div);
+                };
+            }
+        }
+        
+        function removeFile(indexToRemove) {
+            let newDt = new DataTransfer();
+            for (let i = 0; i < dt.files.length; i++) {
+                if (i !== indexToRemove) {
+                    newDt.items.add(dt.files[i]);
+                }
+            }
+            dt = newDt;
+            updateInputAndPreviews();
+        }
+
+        function openModal(src) {
+            document.getElementById('modal-image').src = src;
+            document.getElementById('image-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('image-modal').classList.add('hidden');
+            document.getElementById('modal-image').src = '';
+        }
+    </script>
 </body>
 
 </html>

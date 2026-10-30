@@ -132,7 +132,7 @@
           <div class="mb-3">
             <label for="nomor_hp" class="block text-sm font-bold text-gray-900 dark:text-white">Nomor HP
             </label>
-            <input type="text" id="nomor_hp" name="nomor_hp" inputmode="numeric"
+            <input type="text" id="nomor_hp" name="nomor_hp" inputmode="numeric" maxlength="20"
               value="{{ old('nomor_hp', Auth::user()->nomor_hp) }}" autocomplete="off"
               class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full lg:w-1/2 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
               placeholder="0813XXXXXX" />

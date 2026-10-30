@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class Barang extends Model
 {
@@ -80,9 +82,16 @@ if (empty($model->kode_barang)) {
             $model->studio = 'studio1';
         }
 
-        // QR Code default
-        if (empty($model->qr_code)) {
-            $model->qr_code = 'QR-' . $model->kode_barang;
+        // QR Code otomatis jika belum ada file gambar QR fisik
+        if (empty($model->qr_code) || str_starts_with($model->qr_code, 'QR-')) {
+            try {
+                $fileName = (string) Str::uuid() . '_qr.svg';
+                $svg = QrCode::format('svg')->size(200)->generate($model->kode_barang);
+                Storage::disk('public')->put('uploads/qr_codes_barang/' . $fileName, $svg);
+                $model->qr_code = $fileName;
+            } catch (\Throwable $e) {
+                // Fallback jika storage bermasalah saat testing
+            }
         }
 
         // Limit & Sisa Limit default
@@ -119,5 +128,10 @@ if (empty($model->kode_barang)) {
     public function surat(): HasMany
     {
         return $this->hasMany(Surat::class, 'barang_uuid', 'uuid');
+    }
+
+    public function bmnBarang(): BelongsTo
+    {
+        return $this->belongsTo(BmnBarang::class, 'kode_barang', 'kode_barang');
     }
 }

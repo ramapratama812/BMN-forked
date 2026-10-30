@@ -44,4 +44,10 @@ class LaporanKerusakan extends Model
     {
         return $this->belongsTo(User::class, 'teknisi_id');
     }
+
+    // Relasi ke foto (multiple)
+    public function fotos()
+    {
+        return $this->hasMany(LaporanKerusakanFoto::class, 'laporan_kerusakan_id');
+    }
 }

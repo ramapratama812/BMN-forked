@@ -192,14 +192,15 @@
                                 <div class="flex text-sm text-slate-600 justify-center">
                                     <label for="foto_bukti" class="relative cursor-pointer bg-transparent rounded-md font-bold text-[#1b365d] hover:text-[#d4af37] focus-within:outline-none transition-colors">
                                         <span>Pilih file foto</span>
-                                        <input id="foto_bukti" name="foto_bukti" type="file" class="sr-only" required accept="image/*">
+                                        <input id="foto_bukti" name="foto_bukti[]" type="file" class="sr-only" required accept="image/*" multiple>
                                     </label>
                                     <p class="pl-1">atau tarik dan lepas di sini</p>
                                 </div>
                                 <p class="text-[10px] text-slate-500 uppercase tracking-wider">PNG, JPG, JPEG hingga 4MB</p>
                             </div>
-                            <div id="file-name-display" class="absolute bottom-2 left-0 right-0 text-center text-xs font-bold text-[#1b365d] hidden"></div>
+                            <div id="file-error" class="text-red-500 text-xs mt-2 hidden bg-red-50 p-2 rounded border border-red-100"></div>
                         </div>
+                        <div id="image-preview-container" class="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-4"></div>
                     </div>
 
                     <hr class="my-8 border-slate-200">
@@ -226,20 +227,121 @@
 
     @notifyJs
 
+    {{-- MODAL PREVIEW FOTO --}}
+    <div id="image-modal" class="fixed inset-0 z-[200] hidden bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <button type="button" onclick="closeModal()" class="absolute top-6 right-6 text-white hover:text-red-400 transition-colors z-[210]">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        <img id="modal-image" src="" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain relative z-[205]">
+    </div>
+
     {{-- Script SweetAlert2 untuk Notifikasi Elegan --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        // Script UX Tambahan: Menampilkan nama file saat gambar dipilih
-        document.getElementById('foto_bukti').addEventListener('change', function(e) {
-            const fileName = e.target.files[0]?.name;
-            const display = document.getElementById('file-name-display');
-            if (fileName) {
-                display.textContent = 'Terpilih: ' + fileName;
-                display.classList.remove('hidden');
-            } else {
-                display.classList.add('hidden');
+        const fileUpload = document.getElementById('foto_bukti');
+        const previewContainer = document.getElementById('image-preview-container');
+        const fileError = document.getElementById('file-error');
+        
+        let dt = new DataTransfer(); 
+
+        fileUpload.addEventListener('change', function(e) {
+            fileError.classList.add('hidden');
+            fileError.innerHTML = '';
+            
+            let files = e.target.files;
+            let errors = [];
+            
+            for (let i = 0; i < files.length; i++) {
+                let file = files[i];
+                
+                if (file.size > 4 * 1024 * 1024) {
+                    errors.push(`File "<b>${file.name}</b>" terlalu besar (Maksimal 4 MB).`);
+                    continue;
+                }
+                
+                if (!file.type.startsWith('image/')) {
+                    errors.push(`File "<b>${file.name}</b>" bukan gambar.`);
+                    continue;
+                }
+                
+                dt.items.add(file);
             }
+            
+            if (errors.length > 0) {
+                fileError.innerHTML = errors.join('<br>');
+                fileError.classList.remove('hidden');
+            }
+            
+            updateInputAndPreviews();
         });
+
+        function updateInputAndPreviews() {
+            fileUpload.files = dt.files;
+            previewContainer.innerHTML = '';
+            
+            for (let i = 0; i < dt.files.length; i++) {
+                let file = dt.files[i];
+                let reader = new FileReader();
+                
+                reader.readAsDataURL(file);
+                reader.onload = function(e) {
+                    let div = document.createElement('div');
+                    div.className = 'relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm aspect-square bg-slate-50';
+                    
+                    let img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'w-full h-full object-cover';
+                    
+                    // Tombol Buka
+                    let openBtn = document.createElement('button');
+                    openBtn.type = 'button';
+                    openBtn.innerHTML = 'Buka';
+                    openBtn.className = 'absolute inset-0 m-auto w-14 h-8 bg-black/60 text-white rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-black/80 z-10';
+                    openBtn.onclick = function(event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openModal(e.target.result);
+                    };
+                    
+                    let btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.innerHTML = '×';
+                    btn.className = 'absolute top-1.5 right-1.5 bg-red-500/90 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 shadow-sm hover:bg-red-600 z-20';
+                    
+                    btn.onclick = function(event) {
+                        event.preventDefault(); 
+                        event.stopPropagation();
+                        removeFile(i);
+                    };
+                    
+                    div.appendChild(img);
+                    div.appendChild(openBtn);
+                    div.appendChild(btn);
+                    previewContainer.appendChild(div);
+                };
+            }
+        }
+        
+        function removeFile(indexToRemove) {
+            let newDt = new DataTransfer();
+            for (let i = 0; i < dt.files.length; i++) {
+                if (i !== indexToRemove) {
+                    newDt.items.add(dt.files[i]);
+                }
+            }
+            dt = newDt;
+            updateInputAndPreviews();
+        }
+
+        function openModal(src) {
+            document.getElementById('modal-image').src = src;
+            document.getElementById('image-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('image-modal').classList.add('hidden');
+            document.getElementById('modal-image').src = '';
+        }
 
         function konfirmasiSubmit() {
             const form = document.getElementById('formPerbaikan');

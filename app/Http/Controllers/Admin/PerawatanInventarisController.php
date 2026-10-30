@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PerawatanInventaris;
 use App\Models\BmnBarang;
+use App\Models\Barang;
+use App\Models\DetailPeminjaman;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class PerawatanInventarisController extends Controller
 {
@@ -80,19 +83,32 @@ class PerawatanInventarisController extends Controller
     {
         $request->validate([
             'keluhan' => 'required|string',
-            'foto'    => 'nullable|image|mimes:jpg,jpeg,png|max:4096' // Validasi file foto
+            'foto'    => 'nullable|array',
+            'foto.*'  => 'image|mimes:jpg,jpeg,png|max:4096'
         ]);
 
         $p = PerawatanInventaris::findOrFail($id);
 
-        // Proses simpan file foto jika ada
         $fotoPath = null;
+        $savedPaths = [];
+
         if ($request->hasFile('foto')) {
-            $fotoPath = $request->file('foto')->store('laporan_kerusakan', 'public');
+            $inputFotos = $request->file('foto');
+            if (!is_array($inputFotos)) {
+                $inputFotos = [$inputFotos];
+            }
+
+            foreach ($inputFotos as $index => $f) {
+                $path = $f->store('laporan_kerusakan', 'public');
+                $savedPaths[] = $path;
+
+                if ($index === 0) {
+                    $fotoPath = $path;
+                }
+            }
         }
 
-        // Buat Laporan Kerusakan berstatus disetujui agar langsung tampil di teknisi/index.blade.php
-        \App\Models\LaporanKerusakan::create([
+        $laporan = \App\Models\LaporanKerusakan::create([
             'uuid'            => \Illuminate\Support\Str::uuid(),
             'barang_id'       => $p->barang_id,
             'user_id'         => Auth::id(), // Admin yang melapor
@@ -101,6 +117,13 @@ class PerawatanInventarisController extends Controller
             'foto'            => $fotoPath, // Simpan path foto ke database
             'status'          => 'disetujui'
         ]);
+
+        foreach ($savedPaths as $path) {
+            \App\Models\LaporanKerusakanFoto::create([
+                'laporan_kerusakan_id' => $laporan->id,
+                'foto' => $path
+            ]);
+        }
 
         // Hapus status dari PerawatanInventaris (akan dibuat ulang oleh Teknisi saat memproses)
         $p->delete();
@@ -150,10 +173,73 @@ class PerawatanInventarisController extends Controller
 
     public function verifikasiSelesai($id)
     {
-        $p = PerawatanInventaris::findOrFail($id);
+        $p = PerawatanInventaris::with('barang')->findOrFail($id);
 
-        $p->update(['status' => 'selesai']);
+        // 1. Idempoten: jika sudah berstatus selesai, jangan proses ulang atau gandakan mutasi
+        if ($p->status === 'selesai') {
+            return redirect()->route('perawatan_inventaris.index')
+                ->with('info', 'Perawatan inventaris ini sudah diverifikasi selesai sebelumnya.');
+        }
 
-        return redirect()->route('perawatan_inventaris.index')->with('success', 'Perbaikan telah diverifikasi dan diselesaikan.');
+        // 2. Jangan aktifkan kembali barang jika status pekerjaan teknisi 'tidak_dapat_diperbaiki'
+        if ($p->status === 'tidak_dapat_diperbaiki') {
+            $p->update(['status' => 'selesai']);
+
+            return redirect()->route('perawatan_inventaris.index')
+                ->with('warning', 'Perawatan diselesaikan. Barang tetap berstatus rusak karena tidak dapat diperbaiki.');
+        }
+
+        // 3. Pastikan status hasil pekerjaan teknisi memang 'diperbaiki' (atau 'proses' jika diverifikasi langsung)
+        if (!in_array($p->status, ['diperbaiki', 'proses'])) {
+            return redirect()->route('perawatan_inventaris.index')
+                ->with('error', 'Perawatan belum dapat diverifikasi selesai karena status perbaikan belum siap.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Update status perawatan menjadi 'selesai'
+            $p->update(['status' => 'selesai']);
+
+            // Pulihkan kondisi BMN Barang
+            $bmnItem = $p->barang ?: BmnBarang::find($p->barang_id);
+
+            if ($bmnItem) {
+                $bmnItem->update([
+                    'kondisi' => 'Baik',
+                    'persentase_kondisi' => 100,
+                ]);
+
+                // Sinkronkan ke tabel operasional peminjaman (Barang)
+                $barang = Barang::where('kode_barang', $bmnItem->kode_barang)->first();
+                if ($barang) {
+                    $activeLoansCount = DetailPeminjaman::where('kode_barang', $bmnItem->kode_barang)
+                        ->whereHas('peminjaman', function ($q) {
+                            $q->where('status', 'Proses');
+                        })
+                        ->count();
+
+                    $maxLimit = !is_null($barang->limit)
+                        ? $barang->limit
+                        : max(1, (int) ($bmnItem->jumlah ?: 1));
+
+                    $sisaLimit = max(0, $maxLimit - $activeLoansCount);
+                    $newStatus = ($sisaLimit > 0) ? 'tersedia' : 'tidak-tersedia';
+
+                    $barang->update([
+                        'status' => $newStatus,
+                        'sisa_limit' => $sisaLimit,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('perawatan_inventaris.index')
+                ->with('success', 'Perbaikan telah diverifikasi dan diselesaikan. Kondisi barang kini pulih dan layak digunakan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->route('perawatan_inventaris.index')
+                ->with('error', 'Terjadi kesalahan saat memverifikasi penyelesaian: ' . $e->getMessage());
+        }
     }
 }

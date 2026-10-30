@@ -246,14 +246,42 @@
               </div>
             </div>
 
-            <div class="px-5 pb-5 flex-1">
-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 h-[4.5rem] relative">
+            <div class="px-5 pb-5 flex-1 flex flex-col">
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 h-[4.5rem] relative mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-300 absolute top-2.5 left-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <p class="text-[11px] text-slate-600 font-medium pl-6 leading-relaxed line-clamp-2 mt-0.5" title="{{ $l->deskripsi }}">
                   {{ $l->deskripsi }}
                 </p>
+              </div>
+
+              {{-- Foto Bukti --}}
+              <div class="mt-auto">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Foto Bukti Perbaikan:</p>
+                @if($l->fotosBukti && $l->fotosBukti->count() > 0)
+                  <div class="grid grid-cols-4 gap-2">
+                    @foreach($l->fotosBukti as $foto)
+                      <div class="relative group aspect-square rounded-lg overflow-hidden border border-slate-200 shadow-sm cursor-pointer bg-slate-100" onclick="openModal('{{ asset('storage/' . $foto->foto_bukti) }}')">
+                        <img src="{{ asset('storage/' . $foto->foto_bukti) }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="Bukti">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                        </div>
+                      </div>
+                    @endforeach
+                  </div>
+                @elseif($l->foto_bukti)
+                  <div class="grid grid-cols-4 gap-2">
+                    <div class="relative group aspect-square rounded-lg overflow-hidden border border-slate-200 shadow-sm cursor-pointer bg-slate-100" onclick="openModal('{{ asset('storage/' . $l->foto_bukti) }}')">
+                      <img src="{{ asset('storage/' . $l->foto_bukti) }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="Bukti">
+                      <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                      </div>
+                    </div>
+                  </div>
+                @else
+                  <p class="text-[10px] text-slate-400 italic">Tidak ada foto terlampir</p>
+                @endif
               </div>
             </div>
           </div>
@@ -269,10 +297,28 @@
     </div>
   </section>
 
+  {{-- MODAL PREVIEW FOTO --}}
+  <div id="image-modal" class="fixed inset-0 z-[200] hidden bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+      <button type="button" onclick="closeModal()" class="absolute top-6 right-6 text-white hover:text-red-400 transition-colors z-[210]">
+          <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+      <img id="modal-image" src="" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain relative z-[205]">
+  </div>
+
   @notifyJs
 
   {{-- Script untuk Toggle Input Bulan / Minggu --}}
   <script>
+    function openModal(src) {
+        document.getElementById('modal-image').src = src;
+        document.getElementById('image-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('image-modal').classList.add('hidden');
+        document.getElementById('modal-image').src = '';
+    }
+
     function toggleFilter() {
         const type = document.getElementById('filter_type').value;
         const monthDiv = document.getElementById('div_filter_month');

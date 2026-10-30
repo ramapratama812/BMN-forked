@@ -25,4 +25,9 @@ class DetailPengembalian extends Model
 	{
 		return $this->belongsTo(Barang::class, 'kode_barang', 'kode_barang');
 	}
+
+	public function pengembalian(): BelongsTo
+	{
+		return $this->belongsTo(Pengembalian::class, 'kode_pengembalian', 'kode_pengembalian');
+	}
 }

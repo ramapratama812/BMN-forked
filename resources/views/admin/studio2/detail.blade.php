@@ -78,9 +78,9 @@
         <div class="text-center md:text-left">
           <p class="font-semibold text-gray-700 mb-1">QR Code</p>
           <div class="border p-2 rounded-md bg-gray-50 inline-block shadow-sm">
-            {!! QrCode::size(110)->generate($barang->qr_code ?? 'QR-NOT-SET') !!}
+            {!! QrCode::size(110)->generate($barang->kode_barang ?? 'QR-NOT-SET') !!}
           </div>
-          <p class="text-xs text-gray-500 mt-1">{{ $barang->qr_code ?? '-' }}</p>
+          <p class="text-xs text-gray-500 mt-1">{{ $barang->kode_barang ?? '-' }}</p>
         </div>
 
         {{-- Tombol Cetak --}}

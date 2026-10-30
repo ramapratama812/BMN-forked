@@ -118,13 +118,26 @@
                 <div class="flex flex-col items-center sm:items-end justify-start animate-fade-up delay-200 opacity-0">
                     <div class="w-full">
                         <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 w-full">Foto Bukti Setelah Perbaikan</label>
-                        @if ($data->foto_bukti)
-                            <div class="group relative overflow-hidden rounded-3xl shadow-lg border-4 border-white aspect-[4/3] w-full">
+                        @if ($data->fotosBukti && $data->fotosBukti->count() > 0)
+                            <div class="grid grid-cols-2 gap-4 w-full">
+                                @foreach ($data->fotosBukti as $foto)
+                                <a href="{{ asset('storage/' . $foto->foto_bukti) }}" target="_blank" class="group relative overflow-hidden rounded-2xl shadow-sm border border-slate-100 bg-white p-1 aspect-[4/3] block">
+                                    <div class="w-full h-full rounded-xl overflow-hidden relative">
+                                        <img src="{{ asset('storage/' . $foto->foto_bukti) }}" class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110" alt="Bukti Perbaikan">
+                                        <div class="absolute inset-0 bg-gradient-to-t from-[#1b365d]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
+                                            <span class="text-white text-[10px] font-bold tracking-wider uppercase"><i class="fa-solid fa-image mr-1"></i> Buka</span>
+                                        </div>
+                                    </div>
+                                </a>
+                                @endforeach
+                            </div>
+                        @elseif ($data->foto_bukti)
+                            <a href="{{ asset('storage/' . $data->foto_bukti) }}" target="_blank" class="group relative overflow-hidden rounded-3xl shadow-lg border-4 border-white aspect-[4/3] w-full block">
                                 <img src="{{ asset('storage/' . $data->foto_bukti) }}" class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105" alt="Bukti Perbaikan">
                                 <div class="absolute inset-0 bg-gradient-to-t from-[#1b365d]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
                                     <span class="text-white text-xs font-bold tracking-wider uppercase"><i class="fa-solid fa-image mr-1"></i> Bukti Tim Perbaikan</span>
                                 </div>
-                            </div>
+                            </a>
                         @else
                             <div class="w-full aspect-[4/3] bg-slate-50 rounded-3xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400">
                                 <i class="fa-solid fa-image-slash text-4xl mb-3 text-slate-300"></i>

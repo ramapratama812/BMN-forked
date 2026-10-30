@@ -39,7 +39,26 @@ class OptionsController extends Controller
 				'nama_lengkap' => 'required',
 				'email' => 'required|email|unique:users,email,' . Auth::id(),
 				'nip' => 'required|numeric|unique:users,nip,' . Auth::id(),
-				'nomor_hp' => 'required|numeric|unique:users,nomor_hp,' . Auth::id(),
+				'nomor_hp' => [
+					'bail',
+					'required',
+					function ($attribute, $value, $fail) {
+						if (preg_match('/\s/', $value)) {
+							$fail('Nomor HP tidak boleh mengandung spasi.');
+							return;
+						}
+						if (preg_match('/[a-zA-Z]/', $value)) {
+							$fail('Nomor HP harus berupa angka.');
+							return;
+						}
+						if (!preg_match('/^[0-9]+$/', $value)) {
+							$fail('Format nomor HP tidak sesuai ketentuan.');
+							return;
+						}
+					},
+					'max:13',
+					'unique:users,nomor_hp,' . Auth::id(),
+				],
 				'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
 			],
 			[
@@ -51,7 +70,7 @@ class OptionsController extends Controller
 				'nip.numeric' => 'NIP harus berupa angka.',
 				'nip.unique' => 'NIP sudah digunakan oleh user lain.',
 				'nomor_hp.required' => 'Nomor HP harus diisi.',
-				'nomor_hp.numeric' => 'Nomor HP harus berupa angka.',
+				'nomor_hp.max' => 'Nomor HP tidak boleh lebih dari 13 digit.',
 				'nomor_hp.unique' => 'Nomor HP sudah digunakan oleh user lain.',
 				'foto.file' => 'Foto harus berupa file.',
 				'foto.mimes' => 'Format foto harus berupa jpg, jpeg, atau png.',

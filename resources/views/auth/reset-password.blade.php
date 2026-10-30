@@ -1,4 +1,5 @@
 @extends('auth.template')
+@section('title', 'ESIMBA - Reset Password')
 @section('content')
   <div class="flex items-center justify-center h-screen font-sans px-4 sm:px-8">
     <div

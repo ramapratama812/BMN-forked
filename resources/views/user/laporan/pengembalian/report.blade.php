@@ -1,4 +1,7 @@
-@php use Carbon\Carbon; @endphp
+@php
+  use Carbon\Carbon;
+  Carbon::setLocale('id');
+@endphp
 {{--    new --}}
 <!DOCTYPE html>
 <html lang="en">
@@ -96,15 +99,10 @@
       <tr>
         <td style="width: 33%;">
           <div style="font-weight: bold; font-size: 20px;">Laporan Pengembalian Barang</div>
-          <div>Nomor Peminjaman: {{ $pengembalian->peminjaman->nomor_peminjaman }}</div>
+          <div>Nomor Peminjaman: {{ $pengembalian->peminjaman?->nomor_peminjaman ?? '-' }}</div>
           <div>Kode Pengembalian: {{ $pengembalian->kode_pengembalian }} </div>
         </td>
         <td style="width: 33%;">
-          <br>
-          <div>Waktu Peminjaman:
-            {{ Carbon::parse($pengembalian->peminjaman->tanggal_peminjaman)->translatedFormat('d F Y') }}
-          </div>
-          <div>Waktu pengembalian: {{ Carbon::parse($pengembalian->tanggal_kembali)->translatedFormat('d F Y') }} </div>
         </td>
         <td style="width: 33%; text-align: right;">
           <img src="{{ public_path('img/assets/esimprod_logo.png') }}" alt="Esimprod" width="100" />
@@ -120,18 +118,18 @@
       <table class="w-full">
         <tr>
           <td class="w-half">
-            <div>Peminjam : {{ $pengembalian->peminjaman->peminjam }}</div>
-            <div>NIP : {{ Auth::user()->nip }}</div>
-            <div>No. HP : {{ Auth::user()->nomor_hp }}</div>
-            <div>Jabatan : {{ Auth::user()->jabatan->jabatan }}</div>
+            <div>Peminjam : {{ $pengembalian->peminjaman?->peminjam ?? ($pengembalian->peminjam ?? '-') }}</div>
+            <div>NIP : {{ Auth::user()?->nip ?? '-' }}</div>
+            <div>No. HP : {{ Auth::user()?->nomor_hp ?? '-' }}</div>
+            <div>Jabatan : {{ Auth::user()?->jabatan?->jabatan ?? '-' }}</div>
           </td>
           <td class="w-half">
-            <div>Surat Tugas : {{ $pengembalian->peminjaman->nomor_surat }}</div>
-            <div>Peruntukan : {{ $pengembalian->peminjaman->peruntukan->peruntukan }} </div>
+            <div>Surat Tugas : {{ $pengembalian->peminjaman?->nomor_surat ?? '-' }}</div>
+            <div>Peruntukan : {{ $pengembalian->peminjaman?->peruntukan?->peruntukan ?? '-' }} </div>
             <div>Tgl. Penggunaan :
-              {{ Carbon::parse($pengembalian->peminjaman->tanggal_penggunaan)->translatedFormat('d F Y') }}
+              {{ !empty($pengembalian->peminjaman?->tanggal_penggunaan) ? Carbon::parse($pengembalian->peminjaman->tanggal_penggunaan)->locale('id')->translatedFormat('d F Y') : '-' }}
             </div>
-            <div>Sampai :{{ Carbon::parse($pengembalian->peminjaman->tanggal_kembali)->translatedFormat('d F Y') }}
+            <div>Batas Pengembalian : {{ !empty($pengembalian->peminjaman?->tanggal_kembali) ? Carbon::parse($pengembalian->peminjaman->tanggal_kembali)->locale('id')->translatedFormat('d F Y') : '-' }}
             </div>
           </td>
         </tr>
@@ -144,18 +142,22 @@
       <table class="products" style="width: 100%; border-collapse: collapse;" border="1">
         <tr>
           <th style="text-align: left;">NO</th>
+          <th style="text-align: left;">Kode Barang</th>
           <th style="text-align: left;">Nama Barang</th>
           <th style="text-align: left;">Merk</th>
           <th style="text-align: left;">No. Seri</th>
           <th style="text-align: left;">Kondisi</th>
+          <th style="text-align: left;">Penjelasan</th>
         </tr>
         @foreach ($barangKembali as $key => $item)
           <tr class="items">
             <td style="text-align: left;">{{ $key + 1 }}</td>
+            <td style="text-align: left;">{{ $item['kode_barang'] ?? '-' }}</td>
             <td style="text-align: left;">{{ $item['nama_barang'] }}</td>
             <td style="text-align: left;">{{ $item['merk'] }}</td>
             <td style="text-align: left;">{{ $item['nomor_seri'] }}</td>
             <td style="text-align: left;">{{ $item['kondisi'] }}</td>
+            <td style="text-align: left;">{{ (!empty($item['deskripsi']) && $item['deskripsi'] !== 'Barang Telah Dikembalikan') ? $item['deskripsi'] : '-' }}</td>
           </tr>
         @endforeach
       </table>
@@ -164,11 +166,13 @@
 
 
     {{-- tabel barang tidak kembali --}}
+    @if (!empty($barangHilang) && count($barangHilang) > 0)
     <div class="margin-top">
       <p>Barang Belum dikembalikan:</p>
       <table class="back" style="width: 100%; border-collapse: collapse;" border="1">
         <tr>
           <th style="text-align: left;">NO</th>
+          <th style="text-align: left;">Kode Barang</th>
           <th style="text-align: left;">Nama Barang</th>
           <th style="text-align: left;">Merk</th>
           <th style="text-align: left;">No. Seri</th>
@@ -177,14 +181,16 @@
         @foreach ($barangHilang as $key => $item)
           <tr class="items">
             <td style="text-align: left;">{{ $key + 1 }}</td>
+            <td style="text-align: left;">{{ $item['kode_barang'] ?? '-' }}</td>
             <td style="text-align: left;">{{ $item['nama_barang'] }}</td>
             <td style="text-align: left;">{{ $item['merk'] }}</td>
             <td style="text-align: left;">{{ $item['nomor_seri'] }}</td>
-            <td style="text-align: left;">{{ $item['deskripsi'] }}</td>
+            <td style="text-align: left;">{{ (!empty($item['deskripsi']) && $item['deskripsi'] !== 'Barang Telah Dikembalikan') ? $item['deskripsi'] : '-' }}</td>
           </tr>
         @endforeach
       </table>
     </div>
+    @endif
     {{-- end tabel barang tidak kembali --}}
   </div>
 </body>
