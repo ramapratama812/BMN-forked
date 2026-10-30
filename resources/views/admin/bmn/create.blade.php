@@ -273,23 +273,66 @@
                         </div>
                         <div class="space-y-3">
                             <label class="block text-sm font-semibold text-gray-700">Foto Posisi Terpasang</label>
-                            <div
-                                class="group relative border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-blue-400 transition-all text-center">
-                                <input type="file" name="posisi" id="fotoPosisi" accept="image/*"
-                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                                <div id="posisiPreviewContainer" class="hidden mb-2 justify-center">
-                                    <img id="fotoPosisiPreview" src=""
-                                        class="h-32 w-48 object-cover rounded-lg shadow-md border" alt="Preview">
+
+                            {{-- Opsi Sumber Gambar --}}
+                            <div class="flex gap-4 items-center mb-2">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="sumber_posisi" value="ruangan"
+                                        class="w-4 h-4 text-blue-600 focus:ring-blue-500" checked>
+                                    <span class="ml-2 text-sm text-gray-700">Dari Gambar Ruangan</span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="sumber_posisi" value="manual"
+                                        class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm text-gray-700">Pilih Manual</span>
+                                </label>
+                            </div>
+
+                            {{-- Preview Gambar Ruangan (auto-fetch) --}}
+                            <div id="posisi_dari_ruangan" class="animate-fade-in-down">
+                                <div id="posisiRuanganPreview" class="hidden">
+                                    <div class="border-2 border-green-300 bg-green-50 rounded-xl p-4 text-center">
+                                        <p class="text-xs text-green-600 font-medium mb-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Gambar ruangan akan digunakan
+                                        </p>
+                                        <img id="posisiRuanganImg" src="" class="h-32 w-48 object-cover rounded-lg shadow-md border mx-auto" alt="Gambar Ruangan">
+                                        <input type="hidden" name="use_gambar_ruangan" id="use_gambar_ruangan" value="1">
+                                    </div>
                                 </div>
-                                <div class="text-gray-500" id="posisiLabel">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-8 w-8 mb-2 text-gray-400"
-                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div id="posisiRuanganEmpty" class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-8 w-8 mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
-                                    <p class="text-sm">Tunjukkan lokasi</p>
+                                    <p class="text-sm text-gray-500">Pilih ruangan terlebih dahulu untuk mengambil gambar</p>
+                                    <p class="text-xs text-gray-400 mt-1">atau beralih ke "Pilih Manual"</p>
+                                </div>
+                            </div>
+
+                            {{-- Upload Manual --}}
+                            <div id="posisi_manual" class="hidden animate-fade-in-down">
+                                <div class="group relative border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-blue-400 transition-all text-center">
+                                    <input type="file" name="posisi" id="fotoPosisi" accept="image/*"
+                                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                    <div id="posisiPreviewContainer" class="hidden mb-2 justify-center">
+                                        <img id="fotoPosisiPreview" src=""
+                                            class="h-32 w-48 object-cover rounded-lg shadow-md border" alt="Preview">
+                                    </div>
+                                    <div class="text-gray-500" id="posisiLabel">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-8 w-8 mb-2 text-gray-400"
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <p class="text-sm">Tunjukkan lokasi</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -342,6 +385,41 @@
             }
         }
 
+        // Fetch gambar ruangan dari server
+        function fetchGambarRuangan(namaRuangan) {
+            const previewDiv = document.getElementById('posisiRuanganPreview');
+            const emptyDiv = document.getElementById('posisiRuanganEmpty');
+            const imgEl = document.getElementById('posisiRuanganImg');
+            const hiddenInput = document.getElementById('use_gambar_ruangan');
+
+            if (!namaRuangan) {
+                previewDiv.classList.add('hidden');
+                emptyDiv.classList.remove('hidden');
+                if (hiddenInput) hiddenInput.value = '0';
+                return;
+            }
+
+            fetch(`{{ route('bmn.ruangan.get_image') }}?nama_ruangan=${encodeURIComponent(namaRuangan)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        imgEl.src = data.gambar_url;
+                        previewDiv.classList.remove('hidden');
+                        emptyDiv.classList.add('hidden');
+                        if (hiddenInput) hiddenInput.value = '1';
+                    } else {
+                        previewDiv.classList.add('hidden');
+                        emptyDiv.classList.remove('hidden');
+                        if (hiddenInput) hiddenInput.value = '0';
+                    }
+                })
+                .catch(() => {
+                    previewDiv.classList.add('hidden');
+                    emptyDiv.classList.remove('hidden');
+                    if (hiddenInput) hiddenInput.value = '0';
+                });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const radioTipe = document.querySelectorAll('input[name="tipe_penempatan"]');
             const wrapperLokasi = document.getElementById('wrapper_lokasi');
@@ -351,14 +429,14 @@
             function toggleFields(selectedValue) {
                 if (!selectedValue) return;
 
-                wrapperLokasi.classList.add('hidden');
-                wrapperPengguna.classList.add('hidden');
-                wrapperUnitKerja.classList.remove('hidden');
+                if (wrapperLokasi) wrapperLokasi.classList.add('hidden');
+                if (wrapperPengguna) wrapperPengguna.classList.add('hidden');
+                if (wrapperUnitKerja) wrapperUnitKerja.classList.remove('hidden');
 
                 if (selectedValue === 'lokasi') {
-                    wrapperLokasi.classList.remove('hidden');
+                    if (wrapperLokasi) wrapperLokasi.classList.remove('hidden');
                 } else if (selectedValue === 'pengguna') {
-                    wrapperPengguna.classList.remove('hidden');
+                    if (wrapperPengguna) wrapperPengguna.classList.remove('hidden');
                 }
             }
 
@@ -373,6 +451,46 @@
 
             setupPreview('foto', 'photoPreview', 'previewContainer', 'fotoLabel');
             setupPreview('fotoPosisi', 'fotoPosisiPreview', 'posisiPreviewContainer', 'posisiLabel');
+
+            // Toggle sumber posisi (dari ruangan vs manual)
+            const radioSumber = document.querySelectorAll('input[name="sumber_posisi"]');
+            const posisiDariRuangan = document.getElementById('posisi_dari_ruangan');
+            const posisiManual = document.getElementById('posisi_manual');
+
+            radioSumber.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'ruangan') {
+                        posisiDariRuangan.classList.remove('hidden');
+                        posisiManual.classList.add('hidden');
+                        // Reset file input manual
+                        const fotoPosisi = document.getElementById('fotoPosisi');
+                        if (fotoPosisi) fotoPosisi.value = '';
+                        const hiddenInput = document.getElementById('use_gambar_ruangan');
+                        if (hiddenInput) hiddenInput.value = '1';
+                    } else {
+                        posisiDariRuangan.classList.add('hidden');
+                        posisiManual.classList.remove('hidden');
+                        const hiddenInput = document.getElementById('use_gambar_ruangan');
+                        if (hiddenInput) hiddenInput.value = '0';
+                    }
+                });
+            });
+
+            // Listener: ketika dropdown ruangan berubah, fetch gambar ruangan
+            const ruanganSelect = document.getElementById('ruangan_select');
+            if (ruanganSelect) {
+                ruanganSelect.addEventListener('change', function() {
+                    const sumberRuangan = document.querySelector('input[name="sumber_posisi"][value="ruangan"]');
+                    if (sumberRuangan && sumberRuangan.checked) {
+                        fetchGambarRuangan(this.value);
+                    }
+                });
+            }
+
+            // Untuk route non-general: auto-fetch gambar ruangan saat halaman dimuat
+            @if ($ruangan !== 'general')
+                fetchGambarRuangan('{{ ucfirst($ruangan) }}');
+            @endif
         });
     </script>
 
@@ -394,3 +512,4 @@
         }
     </style>
 @endsection
+

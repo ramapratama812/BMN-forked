@@ -11,7 +11,7 @@ class BmnRuangan extends Model
     use HasFactory;
 
     protected $table = 'bmn_ruangans';
-    protected $fillable = ['uuid', 'nama_ruangan'];
+    protected $fillable = ['uuid', 'nama_ruangan', 'gambar_ruangan'];
 
     protected static function booted()
     {

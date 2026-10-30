@@ -210,6 +210,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update/{uuid}', [BmnController::class, 'ruanganUpdate'])->name('bmn.ruangan.update');
         Route::delete('/destroy/{uuid}', [BmnController::class, 'ruanganDestroy'])->name('bmn.ruangan.destroy');
         Route::get('/search', [BmnController::class, 'ruanganSearch'])->name('bmn.ruangan.search');
+        Route::get('/get-image', [BmnController::class, 'ruanganGetImage'])->name('bmn.ruangan.get_image');
       });
 
       // Route untuk Kategori BMN

@@ -53,13 +53,25 @@ class BmnController extends Controller
     public function ruanganStore(Request $request)
     {
         $validated = $request->validate([
-            'nama_ruangan' => 'required|unique:bmn_ruangans,nama_ruangan',
+            'nama_ruangan'   => 'required|unique:bmn_ruangans,nama_ruangan',
+            'gambar_ruangan'  => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], [
             'nama_ruangan.required' => 'Nama ruangan wajib diisi.',
             'nama_ruangan.unique'   => 'Nama ruangan sudah terdaftar, gunakan nama lain.',
         ]);
 
         $validated['uuid'] = Str::uuid();
+
+        if ($request->hasFile('gambar_ruangan')) {
+            $file = $request->file('gambar_ruangan');
+            $manager = new ImageManager(new Driver());
+            $name = 'ruangan_' . time() . '.' . $file->getClientOriginalExtension();
+            $img = $manager->read($file)->scaleDown(800, 800);
+            $path = 'bmn/ruangan/' . $name;
+            Storage::disk('public')->put($path, $img->encodeByExtension($file->getClientOriginalExtension(), quality: 80));
+            $validated['gambar_ruangan'] = $path;
+        }
+
         BmnRuangan::create($validated);
 
         return redirect()->back()->with('success', 'Ruangan berhasil ditambahkan.');
@@ -76,7 +88,8 @@ class BmnController extends Controller
         $ruangan = BmnRuangan::where('uuid', $uuid)->firstOrFail();
 
         $request->validate([
-            'nama_ruangan' => 'required|unique:bmn_ruangans,nama_ruangan,' . $ruangan->id,
+            'nama_ruangan'   => 'required|unique:bmn_ruangans,nama_ruangan,' . $ruangan->id,
+            'gambar_ruangan'  => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], [
             'nama_ruangan.required' => 'Nama ruangan wajib diisi.',
             'nama_ruangan.unique'   => 'Nama ruangan sudah terdaftar, gunakan nama lain.',
@@ -85,7 +98,23 @@ class BmnController extends Controller
         $namaLama = $ruangan->nama_ruangan;
         $namaBaru = $request->nama_ruangan;
 
-        $ruangan->update(['nama_ruangan' => $namaBaru]);
+        $updateData = ['nama_ruangan' => $namaBaru];
+
+        if ($request->hasFile('gambar_ruangan')) {
+            // Hapus gambar lama jika ada
+            if ($ruangan->gambar_ruangan && Storage::disk('public')->exists($ruangan->gambar_ruangan)) {
+                Storage::disk('public')->delete($ruangan->gambar_ruangan);
+            }
+            $file = $request->file('gambar_ruangan');
+            $manager = new ImageManager(new Driver());
+            $name = 'ruangan_' . time() . '.' . $file->getClientOriginalExtension();
+            $img = $manager->read($file)->scaleDown(800, 800);
+            $path = 'bmn/ruangan/' . $name;
+            Storage::disk('public')->put($path, $img->encodeByExtension($file->getClientOriginalExtension(), quality: 80));
+            $updateData['gambar_ruangan'] = $path;
+        }
+
+        $ruangan->update($updateData);
 
         // Cascade: update semua barang yang tertaut pada ruangan ini
         if ($namaLama !== $namaBaru) {
@@ -97,8 +126,33 @@ class BmnController extends Controller
 
     public function ruanganDestroy($uuid)
     {
-        BmnRuangan::where('uuid', $uuid)->delete();
+        $ruangan = BmnRuangan::where('uuid', $uuid)->firstOrFail();
+
+        // Hapus gambar jika ada
+        if ($ruangan->gambar_ruangan && Storage::disk('public')->exists($ruangan->gambar_ruangan)) {
+            Storage::disk('public')->delete($ruangan->gambar_ruangan);
+        }
+
+        $ruangan->delete();
         return redirect()->back()->with('success', 'Ruangan berhasil dihapus.');
+    }
+
+    /**
+     * API: Ambil gambar ruangan berdasarkan nama ruangan (untuk form create BMN)
+     */
+    public function ruanganGetImage(Request $request)
+    {
+        $nama = $request->input('nama_ruangan');
+        $ruangan = BmnRuangan::where('nama_ruangan', $nama)->first();
+
+        if ($ruangan && $ruangan->gambar_ruangan && Storage::disk('public')->exists($ruangan->gambar_ruangan)) {
+            return response()->json([
+                'success' => true,
+                'gambar_url' => asset('storage/' . $ruangan->gambar_ruangan),
+            ]);
+        }
+
+        return response()->json(['success' => false]);
     }
 
     public function ruanganSearch(Request $request)
@@ -475,6 +529,20 @@ class BmnController extends Controller
             $path = 'bmn/posisi/' . $name;
             Storage::disk('public')->put($path, $img->encodeByExtension($file->getClientOriginalExtension(), quality: 80));
             $validated['posisi'] = $path;
+        } elseif ($request->input('use_gambar_ruangan') == '1') {
+            // Gunakan gambar ruangan yang sudah tersimpan sebagai foto posisi
+            $namaRuanganTarget = $validated['ruangan'] ?? $finalRuangan ?? null;
+            if ($namaRuanganTarget) {
+                $ruanganData = BmnRuangan::where('nama_ruangan', $namaRuanganTarget)->first();
+                if ($ruanganData && $ruanganData->gambar_ruangan && Storage::disk('public')->exists($ruanganData->gambar_ruangan)) {
+                    // Copy gambar ruangan ke folder posisi agar independen
+                    $ext = pathinfo($ruanganData->gambar_ruangan, PATHINFO_EXTENSION);
+                    $copyName = time() . '_posisi_ruangan.' . $ext;
+                    $copyPath = 'bmn/posisi/' . $copyName;
+                    Storage::disk('public')->copy($ruanganData->gambar_ruangan, $copyPath);
+                    $validated['posisi'] = $copyPath;
+                }
+            }
         }
 
         // Generate QR Code menggunakan SvgImageBackEnd (cepat, tidak butuh Imagick)
@@ -609,6 +677,20 @@ class BmnController extends Controller
             $path = 'bmn/posisi/' . $name;
             Storage::disk('public')->put($path, $img->encodeByExtension($file->getClientOriginalExtension(), quality: 80));
             $validated['posisi'] = $path;
+        } elseif ($request->input('use_gambar_ruangan') == '1') {
+            // Gunakan gambar ruangan yang sudah tersimpan sebagai foto posisi
+            $namaRuanganTarget = $validated['ruangan'] ?? null;
+            if ($namaRuanganTarget) {
+                $ruanganData = BmnRuangan::where('nama_ruangan', $namaRuanganTarget)->first();
+                if ($ruanganData && $ruanganData->gambar_ruangan && Storage::disk('public')->exists($ruanganData->gambar_ruangan)) {
+                    if ($barang->posisi) Storage::disk('public')->delete($barang->posisi);
+                    $ext = pathinfo($ruanganData->gambar_ruangan, PATHINFO_EXTENSION);
+                    $copyName = time() . '_posisi_ruangan.' . $ext;
+                    $copyPath = 'bmn/posisi/' . $copyName;
+                    Storage::disk('public')->copy($ruanganData->gambar_ruangan, $copyPath);
+                    $validated['posisi'] = $copyPath;
+                }
+            }
         }
 
         // QR code di-generate berdasarkan uuid (stabil, tidak berubah saat kode_barang diubah)
