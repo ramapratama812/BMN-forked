@@ -229,11 +229,12 @@
                             <div class="relative">
                                 <span
                                     class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 font-medium">Rp</span>
-                                <input type="number" name="nilai_perolehan" value="{{ old('nilai_perolehan') }}"
-                                    placeholder="0"
+                                <input type="text" id="nilai_perolehan" name="nilai_perolehan"
+                                    value="{{ old('nilai_perolehan') }}" inputmode="decimal" placeholder="0"
                                     class="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 pl-10">
                             </div>
                         </div>
+
                         <div class="md:col-span-2 lg:col-span-4">
                             <label class="block text-sm font-semibold text-gray-700 mb-1">Asal Pengadaan /
                                 Peruntukan</label>
@@ -293,30 +294,39 @@
                                 <div id="posisiRuanganPreview" class="hidden">
                                     <div class="border-2 border-green-300 bg-green-50 rounded-xl p-4 text-center">
                                         <p class="text-xs text-green-600 font-medium mb-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block w-4 h-4 mr-1"
+                                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M5 13l4 4L19 7" />
                                             </svg>
                                             Gambar ruangan akan digunakan
                                         </p>
-                                        <img id="posisiRuanganImg" src="" class="h-32 w-48 object-cover rounded-lg shadow-md border mx-auto" alt="Gambar Ruangan">
-                                        <input type="hidden" name="use_gambar_ruangan" id="use_gambar_ruangan" value="1">
+                                        <img id="posisiRuanganImg" src=""
+                                            class="h-32 w-48 object-cover rounded-lg shadow-md border mx-auto"
+                                            alt="Gambar Ruangan">
+                                        <input type="hidden" name="use_gambar_ruangan" id="use_gambar_ruangan"
+                                            value="1">
                                     </div>
                                 </div>
-                                <div id="posisiRuanganEmpty" class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-8 w-8 mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <div id="posisiRuanganEmpty"
+                                    class="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-8 w-8 mb-2 text-gray-400"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
-                                    <p class="text-sm text-gray-500">Pilih ruangan terlebih dahulu untuk mengambil gambar</p>
+                                    <p class="text-sm text-gray-500">Pilih ruangan terlebih dahulu untuk mengambil gambar
+                                    </p>
                                     <p class="text-xs text-gray-400 mt-1">atau beralih ke "Pilih Manual"</p>
                                 </div>
                             </div>
 
                             {{-- Upload Manual --}}
                             <div id="posisi_manual" class="hidden animate-fade-in-down">
-                                <div class="group relative border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-blue-400 transition-all text-center">
+                                <div
+                                    class="group relative border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-blue-400 transition-all text-center">
                                     <input type="file" name="posisi" id="fotoPosisi" accept="image/*"
                                         class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                                     <div id="posisiPreviewContainer" class="hidden mb-2 justify-center">
@@ -480,7 +490,8 @@
             const ruanganSelect = document.getElementById('ruangan_select');
             if (ruanganSelect) {
                 ruanganSelect.addEventListener('change', function() {
-                    const sumberRuangan = document.querySelector('input[name="sumber_posisi"][value="ruangan"]');
+                    const sumberRuangan = document.querySelector(
+                        'input[name="sumber_posisi"][value="ruangan"]');
                     if (sumberRuangan && sumberRuangan.checked) {
                         fetchGambarRuangan(this.value);
                     }
@@ -491,6 +502,40 @@
             @if ($ruangan !== 'general')
                 fetchGambarRuangan('{{ ucfirst($ruangan) }}');
             @endif
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const input = document.getElementById('nilai_perolehan');
+
+            // Format utility function using Indonesian locale (dots for thousands)
+            function formatRupiah(value) {
+                if (!value) return '';
+                // Remove all non-digits
+                const numberString = value.replace(/[^0-9]/g, '');
+                if (!numberString) return '';
+
+                return new Intl.NumberFormat('id-ID').format(parseInt(numberString, 10));
+            }
+
+            // Format the value dynamically as the user types
+            input.addEventListener('input', (e) => {
+                e.target.value = formatRupiah(e.target.value);
+            });
+
+            // Format on initial page load (handles old values passed by Laravel)
+            if (input.value) {
+                input.value = formatRupiah(input.value);
+            }
+
+            // Optional: Clean up formatting right before form submission so the backend gets a raw number string
+            const form = input.closest('form');
+            if (form) {
+                form.addEventListener('submit', () => {
+                    input.value = input.value.replace(/[^0-9]/g, '');
+                });
+            }
         });
     </script>
 
@@ -512,4 +557,3 @@
         }
     </style>
 @endsection
-
