@@ -1,0 +1,2214 @@
+diff --git a/app/Console/Commands/OptimizeOldImages.php b/app/Console/Commands/OptimizeOldImages.php
+old mode 100755
+new mode 100644
+diff --git a/app/Console/Commands/RepairMissingBarangQr.php b/app/Console/Commands/RepairMissingBarangQr.php
+old mode 100755
+new mode 100644
+diff --git a/app/Console/Commands/RepairMissingUserQr.php b/app/Console/Commands/RepairMissingUserQr.php
+old mode 100755
+new mode 100644
+diff --git a/app/Helpers/ActivityLogger.php b/app/Helpers/ActivityLogger.php
+new file mode 100644
+index 0000000..446d1e7
+--- /dev/null
++++ b/app/Helpers/ActivityLogger.php
+@@ -0,0 +1,24 @@
++<?php
++
++namespace App\Helpers;
++
++use App\Models\ActivityLog;
++use Illuminate\Support\Facades\Auth;
++
++class ActivityLogger
++{
++    public static function catat(
++        string $aksi,
++        string $modul,
++        string $deskripsi
++    ): void {
++        ActivityLog::create([
++            'user_id' => Auth::id(),
++            'aksi' => $aksi,
++            'modul' => $modul,
++            'deskripsi' => $deskripsi,
++            'ip_address' => request()->ip(),
++            'user_agent' => request()->userAgent(),
++        ]);
++    }
++}
+diff --git a/app/Http/Controllers/Admin/ActivityLogController.php b/app/Http/Controllers/Admin/ActivityLogController.php
+new file mode 100644
+index 0000000..2bb1583
+--- /dev/null
++++ b/app/Http/Controllers/Admin/ActivityLogController.php
+@@ -0,0 +1,59 @@
++<?php
++
++namespace App\Http\Controllers\Admin;
++
++use App\Http\Controllers\Controller;
++use App\Models\ActivityLog;
++use Illuminate\Http\Request;
++
++class ActivityLogController extends Controller
++{
++   
++public function index(Request $request)
++{
++    $query = ActivityLog::with('user')->latest();
++
++    // Filter berdasarkan aksi
++    if ($request->filled('aksi')) {
++        $query->where('aksi', $request->aksi);
++    }
++
++    // Filter berdasarkan modul
++    if ($request->filled('modul')) {
++        $query->where('modul', $request->modul);
++    }
++
++    // Pencarian
++    if ($request->filled('search')) {
++        $search = $request->search;
++
++        $query->where(function ($q) use ($search) {
++            $q->where('deskripsi', 'like', "%{$search}%")
++              ->orWhere('modul', 'like', "%{$search}%")
++              ->orWhere('aksi', 'like', "%{$search}%")
++              ->orWhereHas('user', function ($userQuery) use ($search) {
++                  $userQuery->where('kode_user', 'like', "%{$search}%");
++              });
++        });
++    }
++
++    $logs = $query->paginate(10)->withQueryString();
++
++    $totalAktivitas = ActivityLog::count();
++
++    $totalModul = ActivityLog::distinct('modul')
++        ->count('modul');
++
++    $moduls = ActivityLog::select('modul')
++        ->distinct()
++        ->orderBy('modul')
++        ->pluck('modul');
++
++    return view('admin.log-aktivitas.index', compact(
++    'logs',
++    'totalAktivitas',
++    'totalModul',
++    'moduls'
++));
++}
++}
+diff --git a/app/Http/Controllers/Admin/BarangController.php b/app/Http/Controllers/Admin/BarangController.php
+old mode 100755
+new mode 100644
+index b4f30ae..2c0b48b
+--- a/app/Http/Controllers/Admin/BarangController.php
++++ b/app/Http/Controllers/Admin/BarangController.php
+@@ -8,6 +8,7 @@
+ use App\Models\BmnKategori;
+ use App\Models\UnitKerja;
+ use App\Models\JenisBarang;
++use App\Helpers\ActivityLogger;
+ use Illuminate\Support\Str;
+ use Illuminate\Http\Request;
+ use App\Http\Controllers\Controller;
+@@ -164,20 +165,28 @@ public function store(Request $request)
+             $data['foto'] = 'default.jpg';
+         }
+ 
+-        Barang::create([
+-            'uuid' => Str::uuid(),
+-            'kode_barang' => $kode_barang,
+-            'nama_barang' => $request->nama_barang,
+-            'nomor_seri' => $request->nomor_seri,
+-            'merk' => $request->merk,
+-            'jenis_barang_id' => $request->jenis_barang_id,
+-            'status' => $request->limit == 0 ? 'tidak-tersedia' : 'tersedia',
+-            'limit' => $request->limit,
+-            'sisa_limit' => $request->limit,
+-            'foto' => $data['foto'],
+-            'deskripsi' => $request->deskripsi,
+-            'qr_code' => $qrCodeFileName,
+-        ]);
++        
++            $barang = Barang::create([
++                'uuid' => Str::uuid(),
++                'kode_barang' => $kode_barang,
++                'nama_barang' => $request->nama_barang,
++                'nomor_seri' => $request->nomor_seri,
++                'merk' => $request->merk,
++                'jenis_barang_id' => $request->jenis_barang_id,
++                'status' => $request->limit == 0 ? 'tidak-tersedia' : 'tersedia',
++                'limit' => $request->limit,
++                'sisa_limit' => $request->limit,
++                'foto' => $data['foto'],
++                'deskripsi' => $request->deskripsi,
++                'qr_code' => $qrCodeFileName,
++            ]);
++
++            ActivityLogger::catat(
++                'Tambah',
++                'Barang',
++                'Menambahkan barang "' . $barang->nama_barang . '"'
++            );
++
+ 
+         notify()->success('Barang Berhasil Ditambahkan');
+         return redirect()->route('barang.index');
+@@ -252,6 +261,8 @@ public function update(Request $request, string $uuid)
+             Storage::disk('public')->put('uploads/foto_barang/' . $filename, $encoded);
+         }
+ 
++        $namaLama = $barang->nama_barang;
++
+         $barang->update([
+             'nama_barang' => $request->nama_barang,
+             'nomor_seri' => $request->nomor_seri,
+@@ -263,6 +274,12 @@ public function update(Request $request, string $uuid)
+             'foto' => $filename,
+         ]);
+ 
++        ActivityLogger::catat(
++            'Edit',
++            'Barang',
++            'Mengubah barang "' . $namaLama . '" menjadi "' . $barang->nama_barang . '"'
++        );
++
+         notify()->success('Barang Berhasil Diupdate');
+ 
+         $currentPage = $request->input('page', 1);
+@@ -282,7 +299,16 @@ public function destroy(Request $request, string $uuid)
+             if ($barang->foto && $barang->foto !== 'default.jpg') {
+                 Storage::disk('public')->delete('uploads/foto_barang/' . $barang->foto);
+             }
++
++            $namaBarang = $barang->nama_barang;
+             $barang->delete();
++
++            ActivityLogger::catat(
++                'Hapus',
++                'Barang',
++                'Menghapus barang "' . $namaBarang . '"'
++            );
++            
+             notify()->success('Barang Berhasil Dihapus');
+             return redirect()->route('barang.index', ['page' => $request->page]);
+         }
+diff --git a/app/Http/Controllers/Admin/BmnController.php b/app/Http/Controllers/Admin/BmnController.php
+old mode 100755
+new mode 100644
+index 6fb7fc9..cb0146c
+--- a/app/Http/Controllers/Admin/BmnController.php
++++ b/app/Http/Controllers/Admin/BmnController.php
+@@ -19,6 +19,8 @@
+ use Intervention\Image\Drivers\Gd\Driver;
+ use Illuminate\Validation\Rule;
+ use App\Models\PerawatanInventaris;
++use App\Helpers\ActivityLogger;
++
+ class BmnController extends Controller
+ {
+     private function tentukanKondisi($persentase)
+@@ -57,7 +59,13 @@ public function ruanganStore(Request $request)
+         ]);
+ 
+         $validated['uuid'] = Str::uuid();
+-        BmnRuangan::create($validated);
++        $ruangan = BmnRuangan::create($validated);
++
++        ActivityLogger::catat(
++            'Tambah',
++            'Ruangan',
++            'Menambahkan ruangan "' . $ruangan->nama_ruangan . '"'
++        );
+ 
+         return redirect()->back()->with('success', 'Ruangan berhasil ditambahkan.');
+     }
+@@ -76,14 +84,30 @@ public function ruanganUpdate(Request $request, $uuid)
+             'nama_ruangan' => 'required|unique:bmn_ruangans,nama_ruangan,' . $ruangan->id,
+         ]);
+ 
++        $namaLama = $ruangan->nama_ruangan;
+         $ruangan->update(['nama_ruangan' => $request->nama_ruangan]);
+ 
++        ActivityLogger::catat(
++            'Edit',
++            'Ruangan',
++            'Mengubah ruangan "' . $namaLama . '" menjadi "' . $ruangan->nama_ruangan . '"'
++        );
++
+         return response()->json(['success' => true]);
+     }
+ 
+     public function ruanganDestroy($uuid)
+     {
+-        BmnRuangan::where('uuid', $uuid)->delete();
++        $ruangan = BmnRuangan::where('uuid', $uuid)->firstOrFail();
++        $namaRuangan = $ruangan->nama_ruangan;
++        $ruangan->delete();
++
++        ActivityLogger::catat(
++            'Hapus',
++            'Ruangan',
++            'Menghapus ruangan "' . $namaRuangan . '"'
++        );
++
+         return redirect()->back()->with('success', 'Ruangan berhasil dihapus.');
+     }
+ 
+@@ -110,7 +134,13 @@ public function kategoriStore(Request $request)
+         ]);
+ 
+         $validated['uuid'] = Str::uuid();
+-        BmnKategori::create($validated);
++        $kategori = BmnKategori::create($validated);
++
++        ActivityLogger::catat(
++            'Tambah',
++            'Kategori',
++            'Menambahkan kategori "' . $kategori->nama_kategori . '"'
++        );
+ 
+         return redirect()->back()->with('success', 'Kategori berhasil ditambahkan.');
+     }
+@@ -129,14 +159,30 @@ public function kategoriUpdate(Request $request, $uuid)
+             'nama_kategori' => 'required|unique:bmn_kategoris,nama_kategori,' . $kategori->id,
+         ]);
+ 
++        $namaLama = $kategori->nama_kategori;
+         $kategori->update(['nama_kategori' => $request->nama_kategori]);
+ 
++        ActivityLogger::catat(
++            'Edit',
++            'Kategori',
++            'Mengubah kategori "' . $namaLama . '" menjadi "' . $kategori->nama_kategori . '"'
++        );
++
+         return response()->json(['success' => true]);
+     }
+ 
+     public function kategoriDestroy($uuid)
+     {
+-        BmnKategori::where('uuid', $uuid)->delete();
++        $kategori = BmnKategori::where('uuid', $uuid)->firstOrFail();
++        $namaKategori = $kategori->nama_kategori;
++        $kategori->delete();
++
++        ActivityLogger::catat(
++            'Hapus',
++            'Kategori',
++            'Menghapus kategori "' . $namaKategori . '"'
++        );
++
+         return redirect()->back()->with('success', 'Kategori berhasil dihapus.');
+     }
+ 
+@@ -162,10 +208,16 @@ public function jenisKerusakanStore(Request $request)
+             'nama_jenis_kerusakan' => 'required|unique:bmn_jenis_kerusakans,nama_jenis_kerusakan',
+         ]);
+ 
+-        BmnJenisKerusakan::create([
++        $jenisKerusakan = BmnJenisKerusakan::create([
+             'nama_jenis_kerusakan' => $request->nama_jenis_kerusakan
+         ]);
+ 
++        ActivityLogger::catat(
++            'Tambah',
++            'Jenis Kerusakan',
++            'Menambahkan jenis kerusakan "' . $jenisKerusakan->nama_jenis_kerusakan . '"'
++        );
++
+         return redirect()->back()->with('success', 'Jenis kerusakan berhasil ditambahkan.');
+     }
+ 
+@@ -182,13 +234,30 @@ public function jenisKerusakanUpdate(Request $request, $uuid)
+             'nama_jenis_kerusakan' => 'required|unique:bmn_jenis_kerusakans,nama_jenis_kerusakan,' . $data->id,
+         ]);
+ 
++        $namaLama = $data->nama_jenis_kerusakan;
+         $data->update(['nama_jenis_kerusakan' => $request->nama_jenis_kerusakan]);
++
++        ActivityLogger::catat(
++            'Edit',
++            'Jenis Kerusakan',
++            'Mengubah jenis kerusakan "' . $namaLama . '" menjadi "' . $data->nama_jenis_kerusakan . '"'
++        );
++
+         return response()->json(['success' => true]);
+     }
+ 
+     public function jenisKerusakanDestroy($uuid)
+     {
+-        BmnJenisKerusakan::where('uuid', $uuid)->delete();
++        $data = BmnJenisKerusakan::where('uuid', $uuid)->firstOrFail();
++        $namaJenisKerusakan = $data->nama_jenis_kerusakan;
++        $data->delete();
++
++        ActivityLogger::catat(
++            'Hapus',
++            'Jenis Kerusakan',
++            'Menghapus jenis kerusakan "' . $namaJenisKerusakan . '"'
++        );
++
+         return redirect()->back()->with('success', 'Data berhasil dihapus.');
+     }
+ 
+@@ -216,7 +285,13 @@ public function penggunaStore(Request $request)
+         ]);
+ 
+         $validated['uuid'] = Str::uuid();
+-        Pengguna::create($validated);
++        $pengguna = Pengguna::create($validated);
++
++        ActivityLogger::catat(
++            'Tambah',
++            'Pengguna',
++            'Menambahkan pengguna "' . $pengguna->nama . '"'
++        );
+ 
+         return redirect()->back()->with('success', 'Pengguna berhasil ditambahkan.');
+     }
+@@ -236,14 +311,30 @@ public function penggunaUpdate(Request $request, $uuid)
+             'nip'  => 'required|string|max:50|unique:penggunas,nip,' . $pengguna->id,
+         ]);
+ 
++        $namaLama = $pengguna->nama;
+         $pengguna->update($validated);
+ 
++        ActivityLogger::catat(
++            'Edit',
++            'Pengguna',
++            'Mengubah pengguna "' . $namaLama . '" menjadi "' . $pengguna->nama . '"'
++        );
++
+         return response()->json(['success' => true]);
+     }
+ 
+     public function penggunaDestroy($uuid)
+     {
+-        Pengguna::where('uuid', $uuid)->delete();
++        $pengguna = Pengguna::where('uuid', $uuid)->firstOrFail();
++        $namaPengguna = $pengguna->nama;
++        $pengguna->delete();
++
++        ActivityLogger::catat(
++            'Hapus',
++            'Pengguna',
++            'Menghapus pengguna "' . $namaPengguna . '"'
++        );
++
+         return redirect()->back()->with('success', 'Data pengguna berhasil dihapus.');
+     }
+ 
+@@ -272,7 +363,13 @@ public function unitKerjaStore(Request $request)
+         ]);
+ 
+         $validated['uuid'] = Str::uuid();
+-        UnitKerja::create($validated);
++        $unitKerja = UnitKerja::create($validated);
++
++        ActivityLogger::catat(
++            'Tambah',
++            'Unit Kerja',
++            'Menambahkan unit kerja "' . $unitKerja->nama_unit_kerja . '"'
++        );
+ 
+         return redirect()->back()->with('success', 'Unit Kerja berhasil ditambahkan.');
+     }
+@@ -291,14 +388,30 @@ public function unitKerjaUpdate(Request $request, $uuid)
+             'nama_unit_kerja' => 'required|max:255|unique:unit_kerjas,nama_unit_kerja,' . $unit_kerja->id,
+         ]);
+ 
++        $namaLama = $unit_kerja->nama_unit_kerja;
+         $unit_kerja->update($validated);
+ 
++        ActivityLogger::catat(
++            'Edit',
++            'Unit Kerja',
++            'Mengubah unit kerja "' . $namaLama . '" menjadi "' . $unit_kerja->nama_unit_kerja . '"'
++        );
++
+         return response()->json(['success' => true]);
+     }
+ 
+     public function unitKerjaDestroy($uuid)
+     {
+-        UnitKerja::where('uuid', $uuid)->delete();
++        $unit_kerja = UnitKerja::where('uuid', $uuid)->firstOrFail();
++        $namaUnitKerja = $unit_kerja->nama_unit_kerja;
++        $unit_kerja->delete();
++
++        ActivityLogger::catat(
++            'Hapus',
++            'Unit Kerja',
++            'Menghapus unit kerja "' . $namaUnitKerja . '"'
++        );
++
+         return redirect()->back()->with('success', 'Unit kerja berhasil dihapus.');
+     }
+ 
+@@ -437,7 +550,13 @@ public function store(Request $request, $ruangan)
+             ->generate($scanUrl, Storage::disk('public')->path($qrPath));
+         $validated['qr_code'] = $qrPath;
+ 
+-        BmnBarang::create($validated);
++        $barang = BmnBarang::create($validated);
++
++        ActivityLogger::catat(
++            'Tambah',
++            'Barang',
++            'Menambahkan barang "' . $barang->nama_barang . '"'
++        );
+ 
+         return redirect()->route('barang.bmn_index')
+             ->with('success', 'Barang berhasil ditambahkan ke ' . $finalRuangan);
+@@ -566,8 +685,15 @@ public function update(Request $request, $ruangan, $id)
+ 
+         unset($validated['ruangan_pilihan'], $validated['user_id'], $validated['tipe_penempatan'], $validated['unit_kerja_pilihan']);
+ 
++        $namaLama = $barang->nama_barang;
+         $barang->update($validated);
+ 
++        ActivityLogger::catat(
++            'Edit',
++            'Barang',
++            'Mengubah barang "' . $namaLama . '" menjadi "' . $barang->nama_barang . '"'
++        );
++
+         return redirect()->route('barang.bmn_index')
+             ->with('success', 'Data barang BMN berhasil diperbarui.');
+     }
+@@ -587,8 +713,15 @@ public function destroy($ruangan, $id)
+     Storage::disk('public')->delete($barang->qr_code);
+     }
+ 
++    $namaBarang = $barang->nama_barang;
+     $barang->delete();
+ 
++    ActivityLogger::catat(
++        'Hapus',
++        'Barang',
++        'Menghapus barang "' . $namaBarang . '"'
++    );
++
+     return redirect()->route('barang.bmn_index', $ruangan)
+     ->with('success', 'Barang berhasil dihapus.');
+     }
+diff --git a/app/Http/Controllers/Admin/DashboardController.php b/app/Http/Controllers/Admin/DashboardController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/DataPenghapusanController.php b/app/Http/Controllers/Admin/DataPenghapusanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/GuideBookController.php b/app/Http/Controllers/Admin/GuideBookController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/JabatanController.php b/app/Http/Controllers/Admin/JabatanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/JenisBarangController.php b/app/Http/Controllers/Admin/JenisBarangController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/LaporanKerusakanAdminController.php b/app/Http/Controllers/Admin/LaporanKerusakanAdminController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/PeminjamanController.php b/app/Http/Controllers/Admin/PeminjamanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/PengembalianController.php b/app/Http/Controllers/Admin/PengembalianController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/PerawatanController.php b/app/Http/Controllers/Admin/PerawatanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/PerawatanInventarisController.php b/app/Http/Controllers/Admin/PerawatanInventarisController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/PeruntukanController.php b/app/Http/Controllers/Admin/PeruntukanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/ProfileController.php b/app/Http/Controllers/Admin/ProfileController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/RencanaPenghapusanController.php b/app/Http/Controllers/Admin/RencanaPenghapusanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/SliderController.php b/app/Http/Controllers/Admin/SliderController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/Studio2Controller.php b/app/Http/Controllers/Admin/Studio2Controller.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/UserController.php b/app/Http/Controllers/Admin/UserController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/AuthController.php b/app/Http/Controllers/AuthController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Controller.php b/app/Http/Controllers/Controller.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/QrController.php b/app/Http/Controllers/QrController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/User/InventarisUserController.php b/app/Http/Controllers/User/InventarisUserController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/User/LaporanKerusakanController.php b/app/Http/Controllers/User/LaporanKerusakanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/User/OptionsController.php b/app/Http/Controllers/User/OptionsController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/User/PeminjamanController.php b/app/Http/Controllers/User/PeminjamanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/User/PengembalianController.php b/app/Http/Controllers/User/PengembalianController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Middleware/CheckJabatan.php b/app/Http/Middleware/CheckJabatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Middleware/CheckRole.php b/app/Http/Middleware/CheckRole.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Middleware/IsLogin.php b/app/Http/Middleware/IsLogin.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Middleware/VerifiedPassword.php b/app/Http/Middleware/VerifiedPassword.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Requests/PerawatanInventarisRequest.php b/app/Http/Requests/PerawatanInventarisRequest.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/ActivityLog.php b/app/Models/ActivityLog.php
+new file mode 100644
+index 0000000..1444824
+--- /dev/null
++++ b/app/Models/ActivityLog.php
+@@ -0,0 +1,25 @@
++<?php
++
++namespace App\Models;
++
++use Illuminate\Database\Eloquent\Model;
++use Illuminate\Database\Eloquent\Relations\BelongsTo;
++
++class ActivityLog extends Model
++{
++    protected $table = 'activity_logs';
++
++    protected $fillable = [
++        'user_id',
++        'aksi',
++        'modul',
++        'deskripsi',
++        'ip_address',
++        'user_agent',
++    ];
++
++    public function user(): BelongsTo
++    {
++        return $this->belongsTo(User::class, 'user_id');
++    }
++}
+\ No newline at end of file
+diff --git a/app/Models/Barang.php b/app/Models/Barang.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/BmnBarang.php b/app/Models/BmnBarang.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/BmnJenisKerusakan.php b/app/Models/BmnJenisKerusakan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/BmnKategori.php b/app/Models/BmnKategori.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/BmnRuangan.php b/app/Models/BmnRuangan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Catatan.php b/app/Models/Catatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/DetailPeminjaman.php b/app/Models/DetailPeminjaman.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/DetailPengembalian.php b/app/Models/DetailPengembalian.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/GuideBook.php b/app/Models/GuideBook.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Jabatan.php b/app/Models/Jabatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/JenisBarang.php b/app/Models/JenisBarang.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/LaporanKerusakan.php b/app/Models/LaporanKerusakan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Log.php b/app/Models/Log.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Peminjaman.php b/app/Models/Peminjaman.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Pengembalian.php b/app/Models/Pengembalian.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Perawatan.php b/app/Models/Perawatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/PerawatanInventaris.php b/app/Models/PerawatanInventaris.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Peruntukan.php b/app/Models/Peruntukan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/SliderImage.php b/app/Models/SliderImage.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Surat.php b/app/Models/Surat.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/User.php b/app/Models/User.php
+old mode 100755
+new mode 100644
+diff --git a/app/Notifications/PeminjamanNotification.php b/app/Notifications/PeminjamanNotification.php
+old mode 100755
+new mode 100644
+diff --git a/app/Providers/AppServiceProvider.php b/app/Providers/AppServiceProvider.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/AuthValidation.php b/app/View/Components/AuthValidation.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/BadgeStatus.php b/app/View/Components/BadgeStatus.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/CreditModal.php b/app/View/Components/CreditModal.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/EmptyData.php b/app/View/Components/EmptyData.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/FilterUserByJabatan.php b/app/View/Components/FilterUserByJabatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/FilterUserByRole.php b/app/View/Components/FilterUserByRole.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/Forms/tinymceEditor.php b/app/View/Components/Forms/tinymceEditor.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/Head/tinymceConfig.php b/app/View/Components/Head/tinymceConfig.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/PeminjamProfile.php b/app/View/Components/PeminjamProfile.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/PeminjamanPopup.php b/app/View/Components/PeminjamanPopup.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/PengembalianPopup.php b/app/View/Components/PengembalianPopup.php
+old mode 100755
+new mode 100644
+diff --git a/config/app.php b/config/app.php
+old mode 100755
+new mode 100644
+diff --git a/config/auth.php b/config/auth.php
+old mode 100755
+new mode 100644
+diff --git a/config/cache.php b/config/cache.php
+old mode 100755
+new mode 100644
+diff --git a/config/database.php b/config/database.php
+old mode 100755
+new mode 100644
+index 125949e..347996c
+--- a/config/database.php
++++ b/config/database.php
+@@ -16,7 +16,7 @@
+     |
+     */
+ 
+-    'default' => env('DB_CONNECTION', 'sqlite'),
++    'default' => env('DB_CONNECTION', 'mysql'),
+ 
+     /*
+     |--------------------------------------------------------------------------
+diff --git a/config/dompdf.php b/config/dompdf.php
+old mode 100755
+new mode 100644
+diff --git a/config/filesystems.php b/config/filesystems.php
+old mode 100755
+new mode 100644
+diff --git a/config/laravel-to-uml.php b/config/laravel-to-uml.php
+old mode 100755
+new mode 100644
+diff --git a/config/laravolt/avatar.php b/config/laravolt/avatar.php
+old mode 100755
+new mode 100644
+diff --git a/config/logging.php b/config/logging.php
+old mode 100755
+new mode 100644
+diff --git a/config/mail.php b/config/mail.php
+old mode 100755
+new mode 100644
+diff --git a/config/notify.php b/config/notify.php
+old mode 100755
+new mode 100644
+diff --git a/config/queue.php b/config/queue.php
+old mode 100755
+new mode 100644
+diff --git a/config/services.php b/config/services.php
+old mode 100755
+new mode 100644
+diff --git a/config/session.php b/config/session.php
+old mode 100755
+new mode 100644
+diff --git a/database/.gitignore b/database/.gitignore
+old mode 100755
+new mode 100644
+diff --git a/database/esimprod.sql b/database/esimprod.sql
+old mode 100755
+new mode 100644
+diff --git a/database/factories/BarangFactory.php b/database/factories/BarangFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/factories/JabatanFactory.php b/database/factories/JabatanFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/factories/JenisBarangFactory.php b/database/factories/JenisBarangFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/factories/PeruntukanFactory.php b/database/factories/PeruntukanFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/factories/UserFactory.php b/database/factories/UserFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/0000_11_17_120946_create_jabatan_table.php b/database/migrations/0000_11_17_120946_create_jabatan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/0001_01_01_000000_create_users_table.php b/database/migrations/0001_01_01_000000_create_users_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/0001_01_01_000001_create_cache_table.php b/database/migrations/0001_01_01_000001_create_cache_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/0001_01_01_000002_create_jobs_table.php b/database/migrations/0001_01_01_000002_create_jobs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_10_24_020418_create_jenis_barang_table.php b/database/migrations/2024_10_24_020418_create_jenis_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_10_24_020444_create_barang_table.php b/database/migrations/2024_10_24_020444_create_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_04_001540_create_peruntukan_table.php b/database/migrations/2024_11_04_001540_create_peruntukan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_04_002537_create_perawatan_table.php b/database/migrations/2024_11_04_002537_create_perawatan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_04_002636_create_peminjaman_table.php b/database/migrations/2024_11_04_002636_create_peminjaman_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_04_002709_create_pengembalian_table.php b/database/migrations/2024_11_04_002709_create_pengembalian_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_05_061543_create_detail_peminjaman_table.php b/database/migrations/2024_11_05_061543_create_detail_peminjaman_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_05_061552_create_detail_pengembalian_table.php b/database/migrations/2024_11_05_061552_create_detail_pengembalian_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_12_22_182303_create_log_table.php b/database/migrations/2024_12_22_182303_create_log_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_12_27_083246_create_catatan_table.php b/database/migrations/2024_12_27_083246_create_catatan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_01_20_134343_create_guidebook_table.php b/database/migrations/2025_01_20_134343_create_guidebook_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_06_130658_add_notes_to_schedules_table.php b/database/migrations/2025_10_06_130658_add_notes_to_schedules_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_041056_create_bmn_barangs_table.php b/database/migrations/2025_10_22_041056_create_bmn_barangs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_104929_add_studio_to_barang_table.php b/database/migrations/2025_10_22_104929_add_studio_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_110718_add_uuid_to_barang_table.php b/database/migrations/2025_10_22_110718_add_uuid_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_111639_modify_nomor_seri_nullable_on_barang_table.php b/database/migrations/2025_10_22_111639_modify_nomor_seri_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_112024_modify_merk_nullable_on_barang_table.php b/database/migrations/2025_10_22_112024_modify_merk_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_112500_modify_jenis_barang_nullable_on_barang_table.php b/database/migrations/2025_10_22_112500_modify_jenis_barang_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_113022_modify_qr_code_nullable_on_barang_table.php b/database/migrations/2025_10_22_113022_modify_qr_code_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_113236_modify_limit_nullable_on_barang_table.php b/database/migrations/2025_10_22_113236_modify_limit_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_23_095547_add_extra_fields_to_barang_table.php b/database/migrations/2025_10_23_095547_add_extra_fields_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_23_101256_add_fields_to_barang_table.php b/database/migrations/2025_10_23_101256_add_fields_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_23_101542_add_new_fields_to_barang_table.php b/database/migrations/2025_10_23_101542_add_new_fields_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_29_080354_add_pengadaan_fields_to_barang_table.php b/database/migrations/2025_10_29_080354_add_pengadaan_fields_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_29_083323_add_asal_pengadaan_to_barang_table.php b/database/migrations/2025_10_29_083323_add_asal_pengadaan_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_30_123324_add_uuid_to_bmn_barangs_table.php b/database/migrations/2025_10_30_123324_add_uuid_to_bmn_barangs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_30_123727_add_qr_code_to_bmn_barangs_table.php b/database/migrations/2025_10_30_123727_add_qr_code_to_bmn_barangs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_11_18_165108_create_slider_images_table.php b/database/migrations/2025_11_18_165108_create_slider_images_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_11_20_120757_create_perawatan_inventaris_table.php b/database/migrations/2025_11_20_120757_create_perawatan_inventaris_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_11_26_142152_create_surat_table.php b/database/migrations/2025_11_26_142152_create_surat_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_27_155322_create_bmn_ruangans_table.php b/database/migrations/2025_12_27_155322_create_bmn_ruangans_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_27_155347_create_bmn_kategoris_table.php b/database/migrations/2025_12_27_155347_create_bmn_kategoris_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_27_172841_create_bmn_jenis_kerusakans_table.php b/database/migrations/2025_12_27_172841_create_bmn_jenis_kerusakans_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_28_122618_update_bmn_barangs_table.php b/database/migrations/2025_12_28_122618_update_bmn_barangs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_30_222249_create_laporan_kerusakan_table.php b/database/migrations/2025_12_30_222249_create_laporan_kerusakan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2026_02_10_120307_add_user_id_to_laporan_kerusakan_table.php b/database/migrations/2026_02_10_120307_add_user_id_to_laporan_kerusakan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2026_10_06_022756_add_teknisi_id_to_laporan_kerusakans_table.php b/database/migrations/2026_10_06_022756_add_teknisi_id_to_laporan_kerusakans_table.php
+new file mode 100644
+index 0000000..b37264b
+--- /dev/null
++++ b/database/migrations/2026_10_06_022756_add_teknisi_id_to_laporan_kerusakans_table.php
+@@ -0,0 +1,32 @@
++
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        if (!Schema::hasColumn('laporan_kerusakan', 'teknisi_id')) {
++            Schema::table('laporan_kerusakan', function (Blueprint $table) {
++                $table->foreignId('teknisi_id')
++                    ->nullable()
++                    ->after('user_id')
++                    ->constrained('users')
++                    ->nullOnDelete();
++            });
++        }
++    }
++
++    public function down(): void
++    {
++        if (Schema::hasColumn('laporan_kerusakan', 'teknisi_id')) {
++            Schema::table('laporan_kerusakan', function (Blueprint $table) {
++                $table->dropForeign(['teknisi_id']);
++                $table->dropColumn('teknisi_id');
++            });
++        }
++    }
++};
+diff --git a/database/migrations/2026_10_06_022947_add_user_id_to_perawatan_inventaris_table.php b/database/migrations/2026_10_06_022947_add_user_id_to_perawatan_inventaris_table.php
+new file mode 100644
+index 0000000..9e9d941
+--- /dev/null
++++ b/database/migrations/2026_10_06_022947_add_user_id_to_perawatan_inventaris_table.php
+@@ -0,0 +1,32 @@
++
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        if (!Schema::hasColumn('perawatan_inventaris', 'user_id')) {
++            Schema::table('perawatan_inventaris', function (Blueprint $table) {
++                $table->foreignId('user_id')
++                    ->nullable()
++                    ->after('barang_id')
++                    ->constrained('users')
++                    ->nullOnDelete();
++            });
++        }
++    }
++
++    public function down(): void
++    {
++        if (Schema::hasColumn('perawatan_inventaris', 'user_id')) {
++            Schema::table('perawatan_inventaris', function (Blueprint $table) {
++                $table->dropForeign(['user_id']);
++                $table->dropColumn('user_id');
++            });
++        }
++    }
++};
+diff --git a/database/migrations/2026_10_26_031857_create_activity_logs_table.php b/database/migrations/2026_10_26_031857_create_activity_logs_table.php
+new file mode 100644
+index 0000000..d5f5720
+--- /dev/null
++++ b/database/migrations/2026_10_26_031857_create_activity_logs_table.php
+@@ -0,0 +1,35 @@
++
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        if (!Schema::hasTable('activity_logs')) {
++            Schema::create('activity_logs', function (Blueprint $table) {
++                $table->id();
++
++                $table->foreignId('user_id')
++                    ->nullable()
++                    ->constrained('users')
++                    ->nullOnDelete();
++
++                $table->string('aksi');
++                $table->string('modul');
++                $table->text('deskripsi');
++                $table->string('ip_address', 45)->nullable();
++                $table->text('user_agent')->nullable();
++                $table->timestamps();
++            });
++        }
++    }
++
++    public function down(): void
++    {
++        Schema::dropIfExists('activity_logs');
++    }
++};
+diff --git a/database/seeders/BarangSeeder.php b/database/seeders/BarangSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/DatabaseSeeder.php b/database/seeders/DatabaseSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/JabatanSeeder.php b/database/seeders/JabatanSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/JenisBarangSeeder.php b/database/seeders/JenisBarangSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/PeruntukanSeeder.php b/database/seeders/PeruntukanSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/TaskCSeeder.php b/database/seeders/TaskCSeeder.php
+new file mode 100644
+index 0000000..19e2f69
+--- /dev/null
++++ b/database/seeders/TaskCSeeder.php
+@@ -0,0 +1,366 @@
++<?php
++
++namespace Database\Seeders;
++
++use App\Models\BmnBarang;
++use App\Models\LaporanKerusakan;
++use App\Models\PerawatanInventaris;
++use App\Models\User;
++use Illuminate\Database\Seeder;
++use Illuminate\Support\Str;
++use Illuminate\Support\Facades\Hash;
++
++class TaskCSeeder extends Seeder
++{
++    public function run(): void
++    {
++        /*
++        |--------------------------------------------------------------------------
++        | 1. USER / TEKNISI TASK C
++        |--------------------------------------------------------------------------
++        */
++
++        // Gunakan Superadmin yang sudah ada sebagai pelapor/admin
++        $admin = User::where('kode_user', 'USR061224')->first();
++
++        if (!$admin) {
++            $this->command->error(
++                'User USR061224 tidak ditemukan. Jalankan UserSeeder terlebih dahulu.'
++            );
++
++            return;
++        }
++
++        // Buat user teknisi khusus untuk dummy Task C
++       $teknisi = User::firstOrCreate(
++    [
++        'kode_user' => 'USRTEKC01',
++    ],
++    [
++        'uuid' => Str::uuid(),
++        'nama_lengkap' => 'Teknisi Task C',
++        'email' => 'teknisi.taskc@esimba.test',
++        'nip' => '1999010120260001',
++        'nomor_hp' => '081234567890',
++        'role' => 'teknisi',
++        'jabatan_id' => 4,
++        'password' => Hash::make('TeknisiTaskC123'),
++        'qr_code' => 'taskc_teknisi_qr.png',
++        'foto' => 'default.jpeg',
++        'created_at' => now(),
++        'updated_at' => now(),
++    ]
++);
++
++        /*
++        |--------------------------------------------------------------------------
++        | 2. DATA BARANG BMN
++        |--------------------------------------------------------------------------
++        */
++
++        $barangPending = BmnBarang::firstOrCreate(
++            [
++                'kode_barang' => 'TASKC-LAP-001',
++            ],
++            [
++                'uuid' => Str::uuid(),
++                'nama_barang' => 'Laptop Admin Task C',
++                'nup' => '001',
++                'kategori' => 'Elektronik',
++                'merk' => 'Lenovo',
++                'nomor_seri' => 'TASKC-LAPTOP-001',
++                'jumlah' => 1,
++                'persentase_kondisi' => 70,
++                'kondisi' => 'Rusak Ringan',
++                'foto' => 'default.jpg',
++                'qr_code' => null,
++                'ruangan' => 'Ruang Administrasi',
++                
++                'tanggal_perolehan' => '2024-01-15',
++                'nilai_perolehan' => 8500000,
++                'asal_pengadaan' => 'Pembelian',
++                'peruntukan' => 'Administrasi',
++                'posisi' => 'Meja Admin',
++                'catatan' => 'Dummy Task C - laporan pending',
++            ]
++        );
++
++        $barangDitolak = BmnBarang::firstOrCreate(
++            [
++                'kode_barang' => 'TASKC-LAP-002',
++            ],
++            [
++                'uuid' => Str::uuid(),
++                'nama_barang' => 'Laptop Produksi Task C',
++                'nup' => '002',
++                'kategori' => 'Elektronik',
++                'merk' => 'Acer',
++                'nomor_seri' => 'TASKC-LAPTOP-002',
++                'jumlah' => 1,
++                'persentase_kondisi' => 80,
++                'kondisi' => 'Baik',
++                'foto' => 'default.jpg',
++                'qr_code' => null,
++                'ruangan' => 'Ruang Produksi',
++                
++                'tanggal_perolehan' => '2024-02-20',
++                'nilai_perolehan' => 7500000,
++                'asal_pengadaan' => 'Pembelian',
++                'peruntukan' => 'Produksi',
++                'posisi' => 'Meja Produksi',
++                'catatan' => 'Dummy Task C - laporan ditolak',
++            ]
++        );
++
++        $barangPerbaikan = BmnBarang::firstOrCreate(
++            [
++                'kode_barang' => 'TASKC-PRN-001',
++            ],
++            [
++                'uuid' => Str::uuid(),
++                'nama_barang' => 'Printer Keuangan Task C',
++                'nup' => '003',
++                'kategori' => 'Peralatan Kantor',
++                'merk' => 'Epson',
++                'nomor_seri' => 'TASKC-PRINTER-001',
++                'jumlah' => 1,
++                'persentase_kondisi' => 50,
++                'kondisi' => 'Rusak',
++                'foto' => 'default.jpg',
++                'qr_code' => null,
++                'ruangan' => 'Ruang Keuangan',
++                
++                'tanggal_perolehan' => '2023-05-10',
++                'nilai_perolehan' => 4500000,
++                'asal_pengadaan' => 'Pembelian',
++                'peruntukan' => 'Keuangan',
++                'posisi' => 'Meja Keuangan',
++                'catatan' => 'Dummy Task C - antrean perbaikan',
++            ]
++        );
++
++        $barangSelesai = BmnBarang::firstOrCreate(
++            [
++                'kode_barang' => 'TASKC-KMR-001',
++            ],
++            [
++                'uuid' => Str::uuid(),
++                'nama_barang' => 'Kamera Dokumentasi Task C',
++                'nup' => '004',
++                'kategori' => 'Kamera',
++                'merk' => 'Canon',
++                'nomor_seri' => 'TASKC-CAMERA-001',
++                'jumlah' => 1,
++                'persentase_kondisi' => 90,
++                'kondisi' => 'Baik',
++                'foto' => 'default.jpg',
++                'qr_code' => null,
++                'ruangan' => 'Ruang Dokumentasi',
++                
++                'tanggal_perolehan' => '2023-08-12',
++                'nilai_perolehan' => 12000000,
++                'asal_pengadaan' => 'Pembelian',
++                'peruntukan' => 'Dokumentasi',
++                'posisi' => 'Lemari Kamera',
++                'catatan' => 'Dummy Task C - riwayat perbaikan',
++            ]
++        );
++
++        $barangHapus = BmnBarang::firstOrCreate(
++            [
++                'kode_barang' => 'TASKC-LAP-003',
++            ],
++            [
++                'uuid' => Str::uuid(),
++                'nama_barang' => 'Laptop Arsip Task C',
++                'nup' => '005',
++                'kategori' => 'Elektronik',
++                'merk' => 'HP',
++                'nomor_seri' => 'TASKC-LAPTOP-003',
++                'jumlah' => 1,
++                'persentase_kondisi' => 20,
++                'kondisi' => 'Rusak Berat',
++                'foto' => 'default.jpg',
++                'qr_code' => null,
++                'ruangan' => 'Ruang Arsip',
++                
++                'tanggal_perolehan' => '2019-03-10',
++                'nilai_perolehan' => 9000000,
++                'asal_pengadaan' => 'Pembelian',
++                'peruntukan' => 'Arsip',
++                'posisi' => 'Lemari Arsip',
++                'catatan' => 'Dummy Task C - rencana penghapusan',
++            ]
++        );
++
++        $barangArsip = BmnBarang::firstOrCreate(
++            [
++                'kode_barang' => 'TASKC-PRN-002',
++            ],
++            [
++                'uuid' => Str::uuid(),
++                'nama_barang' => 'Printer Lama Task C',
++                'nup' => '006',
++                'kategori' => 'Peralatan Kantor',
++                'merk' => 'Canon',
++                'nomor_seri' => 'TASKC-PRINTER-002',
++                'jumlah' => 1,
++                'persentase_kondisi' => 10,
++                'kondisi' => 'Rusak Berat',
++                'foto' => 'default.jpg',
++                'qr_code' => null,
++                'ruangan' => 'Gudang',
++                
++                'tanggal_perolehan' => '2018-01-10',
++                'nilai_perolehan' => 3000000,
++                'asal_pengadaan' => 'Pembelian',
++                'peruntukan' => 'Operasional',
++                'posisi' => 'Gudang BMN',
++                'catatan' => 'Dummy Task C - arsip penghapusan',
++            ]
++        );
++
++        /*
++        |--------------------------------------------------------------------------
++        | 3. E12 - LAPORAN KERUSAKAN PENDING
++        |--------------------------------------------------------------------------
++        */
++
++        LaporanKerusakan::firstOrCreate(
++            [
++                'barang_id' => $barangPending->id,
++                'user_id' => $admin->id,
++                'status' => 'pending',
++            ],
++            [
++                'teknisi_id' => null,
++                'jenis_kerusakan' => 'Layar rusak',
++                'deskripsi' => 'Layar laptop mengalami garis dan tampilan berkedip.',
++                'foto' => null,
++            ]
++        );
++
++        /*
++        |--------------------------------------------------------------------------
++        | 4. E12 - RIWAYAT LAPORAN DITOLAK
++        |--------------------------------------------------------------------------
++        */
++
++        LaporanKerusakan::firstOrCreate(
++            [
++                'barang_id' => $barangDitolak->id,
++                'user_id' => $admin->id,
++                'status' => 'ditolak',
++            ],
++            [
++                'teknisi_id' => null,
++                'jenis_kerusakan' => 'Keyboard bermasalah',
++                'deskripsi' => 'Beberapa tombol keyboard tidak berfungsi.',
++                'foto' => null,
++            ]
++        );
++
++        /*
++        |--------------------------------------------------------------------------
++        | 5. E15 - ANTREAN PERBAIKAN
++        |--------------------------------------------------------------------------
++        */
++
++        PerawatanInventaris::firstOrCreate(
++            [
++                'barang_id' => $barangPerbaikan->id,
++                'jenis_perawatan' => 'perbaikan',
++                'status' => 'pending',
++            ],
++            [
++                'user_id' => $admin->id,
++                'tanggal_perawatan' => now()->subDays(2)->toDateString(),
++                'deskripsi' => 'TASK-C: Printer tidak dapat mencetak dokumen.',
++                'biaya' => null,
++                'foto_kerusakan' => null,
++                'foto_bukti' => null,
++                'surat_penghapusan' => null,
++            ]
++        );
++
++        /*
++        |--------------------------------------------------------------------------
++        | 6. E16 + E17 - RIWAYAT PERBAIKAN
++        |--------------------------------------------------------------------------
++        */
++
++        PerawatanInventaris::firstOrCreate(
++            [
++                'barang_id' => $barangSelesai->id,
++                'jenis_perawatan' => 'perbaikan',
++                'deskripsi' => 'TASK-C: Pembersihan sensor kamera dan penggantian konektor.',
++            ],
++            [
++                'user_id' => $teknisi->id,
++                'tanggal_perawatan' => now()->subDays(5)->toDateString(),
++                'status' => 'diperbaiki',
++                'biaya' => 350000,
++                'foto_kerusakan' => null,
++                'foto_bukti' => null,
++                'surat_penghapusan' => null,
++            ]
++        );
++
++        /*
++        |--------------------------------------------------------------------------
++        | 7. E18 - RENCANA PENGHAPUSAN
++        |--------------------------------------------------------------------------
++        */
++
++        PerawatanInventaris::firstOrCreate(
++            [
++                'barang_id' => $barangHapus->id,
++                'jenis_perawatan' => 'rencana_penghapusan',
++            ],
++            [
++                'user_id' => $admin->id,
++                'tanggal_perawatan' => now()->subDays(1)->toDateString(),
++                'status' => 'pending',
++                'deskripsi' => 'TASK-C: Barang rusak berat dan direncanakan untuk penghapusan.',
++                'biaya' => null,
++                'foto_kerusakan' => null,
++                'foto_bukti' => null,
++                'surat_penghapusan' => null,
++            ]
++        );
++
++        /*
++        |--------------------------------------------------------------------------
++        | 8. E18 - DATA PENGHAPUSAN / ARSIP
++        |--------------------------------------------------------------------------
++        */
++
++        PerawatanInventaris::firstOrCreate(
++            [
++                'barang_id' => $barangArsip->id,
++                'jenis_perawatan' => 'penghapusan',
++            ],
++            [
++                'user_id' => $admin->id,
++                'tanggal_perawatan' => now()->subDays(10)->toDateString(),
++                'status' => 'selesai',
++                'deskripsi' => 'TASK-C: Barang telah masuk arsip penghapusan.',
++                'biaya' => null,
++                'foto_kerusakan' => null,
++                'foto_bukti' => null,
++                'surat_penghapusan' => null,
++            ]
++        );
++
++        $this->command->info('==========================================');
++        $this->command->info('DUMMY DATA TASK C BERHASIL DIBUAT');
++        $this->command->info('==========================================');
++        $this->command->info('E12 : Laporan pending + laporan ditolak');
++        $this->command->info('E13 : Data siap untuk pengujian duplikasi');
++        $this->command->info('E15 : Antrean perbaikan');
++        $this->command->info('E16 : Riwayat perbaikan');
++        $this->command->info('E17 : Data logbook');
++        $this->command->info('E18 : Rencana + arsip penghapusan');
++        $this->command->info('==========================================');
++    }
++}
+\ No newline at end of file
+diff --git a/database/seeders/UserSeeder.php b/database/seeders/UserSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/package-lock.json b/package-lock.json
+old mode 100755
+new mode 100644
+index f53551d..8d87495
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,5 +1,5 @@
+ {
+-    "name": "esimprod2.0",
++    "name": "BMN-forked-main",
+     "lockfileVersion": 3,
+     "requires": true,
+     "packages": {
+@@ -463,7 +463,6 @@
+             "integrity": "sha512-1ZJTZebgqllO79ue2bm3rIGud/bOe0pP5BjSRCRxxYkEZS8STV7zN84UBbiYu7jy+eCKSnVIUgoWWE/tt+shMQ==",
+             "dev": true,
+             "optional": true,
+-            "peer": true,
+             "dependencies": {
+                 "@jridgewell/gen-mapping": "^0.3.5",
+                 "@jridgewell/trace-mapping": "^0.3.25"
+@@ -800,17 +799,6 @@
+             "integrity": "sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==",
+             "dev": true
+         },
+-        "node_modules/@types/node": {
+-            "version": "22.10.2",
+-            "resolved": "https://registry.npmjs.org/@types/node/-/node-22.10.2.tgz",
+-            "integrity": "sha512-Xxr6BBRCAOQixvonOye19wnzyDiUtTeqldOOmj3CkeblonbccA12PFwlufvRdrpjXxqnmUaeiU5EOA+7s5diUQ==",
+-            "dev": true,
+-            "optional": true,
+-            "peer": true,
+-            "dependencies": {
+-                "undici-types": "~6.20.0"
+-            }
+-        },
+         "node_modules/@types/resolve": {
+             "version": "1.20.2",
+             "resolved": "https://registry.npmjs.org/@types/resolve/-/resolve-1.20.2.tgz",
+@@ -823,7 +811,6 @@
+             "integrity": "sha512-cl669nCJTZBsL97OF4kUQm5g5hC2uihk0NxY3WENAC0TYdILVkAyHymAntgxGkl7K+t0cXIrH5siy5S4XkFycA==",
+             "dev": true,
+             "optional": true,
+-            "peer": true,
+             "bin": {
+                 "acorn": "bin/acorn"
+             },
+@@ -1002,6 +989,7 @@
+                     "url": "https://github.com/sponsors/ai"
+                 }
+             ],
++            "peer": true,
+             "dependencies": {
+                 "caniuse-lite": "^1.0.30001688",
+                 "electron-to-chromium": "^1.5.73",
+@@ -1020,8 +1008,7 @@
+             "resolved": "https://registry.npmjs.org/buffer-from/-/buffer-from-1.1.2.tgz",
+             "integrity": "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==",
+             "dev": true,
+-            "optional": true,
+-            "peer": true
++            "optional": true
+         },
+         "node_modules/camelcase-css": {
+             "version": "2.0.1",
+@@ -1855,6 +1842,7 @@
+                     "url": "https://github.com/sponsors/ai"
+                 }
+             ],
++            "peer": true,
+             "dependencies": {
+                 "nanoid": "^3.3.7",
+                 "picocolors": "^1.1.0",
+@@ -2085,6 +2073,7 @@
+             "resolved": "https://registry.npmjs.org/rollup/-/rollup-4.24.0.tgz",
+             "integrity": "sha512-DOmrlGSXNk1DM0ljiQA+i+o0rSLhtii1je5wgk60j49d1jHT5YYttBv1iWOnYSTG+fZZESUOSNiAl89SIet+Cg==",
+             "dev": true,
++            "peer": true,
+             "dependencies": {
+                 "@types/estree": "1.0.6"
+             },
+@@ -2177,7 +2166,6 @@
+             "integrity": "sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==",
+             "dev": true,
+             "optional": true,
+-            "peer": true,
+             "engines": {
+                 "node": ">=0.10.0"
+             }
+@@ -2197,7 +2185,6 @@
+             "integrity": "sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w==",
+             "dev": true,
+             "optional": true,
+-            "peer": true,
+             "dependencies": {
+                 "buffer-from": "^1.0.0",
+                 "source-map": "^0.6.0"
+@@ -2376,7 +2363,6 @@
+             "integrity": "sha512-B8wRRkmre4ERucLM/uXx4MOV5cbnOlVAqUst+1+iLKPI0dOgFO28f84ptoQt9HEI537PMzfYa/d+GEPKTRXmYA==",
+             "dev": true,
+             "optional": true,
+-            "peer": true,
+             "dependencies": {
+                 "@jridgewell/source-map": "^0.3.3",
+                 "acorn": "^8.8.2",
+@@ -2395,8 +2381,7 @@
+             "resolved": "https://registry.npmjs.org/commander/-/commander-2.20.3.tgz",
+             "integrity": "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==",
+             "dev": true,
+-            "optional": true,
+-            "peer": true
++            "optional": true
+         },
+         "node_modules/thenify": {
+             "version": "3.3.1",
+@@ -2442,8 +2427,7 @@
+             "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-6.20.0.tgz",
+             "integrity": "sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==",
+             "dev": true,
+-            "optional": true,
+-            "peer": true
++            "optional": true
+         },
+         "node_modules/update-browserslist-db": {
+             "version": "1.1.1",
+@@ -2486,6 +2470,7 @@
+             "resolved": "https://registry.npmjs.org/vite/-/vite-5.4.9.tgz",
+             "integrity": "sha512-20OVpJHh0PAM0oSOELa5GaZNWeDjcAvQjGXy2Uyr+Tp+/D2/Hdz6NLgpJLsarPTA2QJ6v8mX2P1ZfbsSKvdMkg==",
+             "dev": true,
++            "peer": true,
+             "dependencies": {
+                 "esbuild": "^0.21.3",
+                 "postcss": "^8.4.43",
+diff --git a/package.json b/package.json
+old mode 100755
+new mode 100644
+diff --git a/resources/css/app.css b/resources/css/app.css
+old mode 100755
+new mode 100644
+diff --git a/resources/js/app.js b/resources/js/app.js
+old mode 100755
+new mode 100644
+diff --git a/resources/js/bootstrap.js b/resources/js/bootstrap.js
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/barang_pdf.blade.php b/resources/views/admin/barang/barang_pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/create.blade.php b/resources/views/admin/barang/create.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/detail.blade.php b/resources/views/admin/barang/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/edit.blade.php b/resources/views/admin/barang/edit.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/export.blade.php b/resources/views/admin/barang/export.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/index.blade.php b/resources/views/admin/barang/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/index_bmn.blade.php b/resources/views/admin/barang/index_bmn.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/qrcode_pdf.blade.php b/resources/views/admin/barang/qrcode_pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/qrcode_rak_pdf.blade.php b/resources/views/admin/barang/qrcode_rak_pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/qrcode_ruangan_pdf.blade.php b/resources/views/admin/barang/qrcode_ruangan_pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/create.blade.php b/resources/views/admin/bmn/create.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/edit.blade.php b/resources/views/admin/bmn/edit.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/index.blade.php b/resources/views/admin/bmn/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/jenis_kerusakan/index.blade.php b/resources/views/admin/bmn/jenis_kerusakan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/kategori/index.blade.php b/resources/views/admin/bmn/kategori/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/pdf.blade.php b/resources/views/admin/bmn/pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/print.blade.php b/resources/views/admin/bmn/print.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/print_filtered.blade.php b/resources/views/admin/bmn/print_filtered.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/ruangan/index.blade.php b/resources/views/admin/bmn/ruangan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/show.blade.php b/resources/views/admin/bmn/show.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/dashboard/index.blade.php b/resources/views/admin/dashboard/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/data_penghapusan/index.blade.php b/resources/views/admin/data_penghapusan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/data_penghapusan/pdf.blade.php b/resources/views/admin/data_penghapusan/pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/guidebook/index.blade.php b/resources/views/admin/guidebook/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/jabatan/index.blade.php b/resources/views/admin/jabatan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/jenis-barang/index.blade.php b/resources/views/admin/jenis-barang/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/laporan_kerusakan/detail.blade.php b/resources/views/admin/laporan_kerusakan/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/laporan_kerusakan/index.blade.php b/resources/views/admin/laporan_kerusakan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/laporan_kerusakan/pdf_rekap.blade.php b/resources/views/admin/laporan_kerusakan/pdf_rekap.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/log-aktivitas/index.blade.php b/resources/views/admin/log-aktivitas/index.blade.php
+new file mode 100644
+index 0000000..f8913c0
+--- /dev/null
++++ b/resources/views/admin/log-aktivitas/index.blade.php
+@@ -0,0 +1,196 @@
++
++@extends('layouts.admin.main')
++
++@section('content')
++<div class="p-6 bg-gray-50 min-h-screen">
++
++    {{-- HEADER --}}
++    <div class="mb-6">
++        <h1 class="text-2xl font-bold text-gray-800">
++            Log Aktivitas
++        </h1>
++        <p class="text-sm text-gray-500 mt-1">
++            Riwayat aktivitas pengguna dalam sistem ESIMBA.
++        </p>
++    </div>
++
++    {{-- RINGKASAN --}}
++    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
++
++        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
++            <div class="flex justify-between items-center">
++                <div>
++                    <p class="text-sm text-gray-500">Total Aktivitas</p>
++                    <h2 class="text-2xl font-bold text-gray-800 mt-2">
++                        {{ $totalAktivitas ?? 0 }}
++                    </h2>
++                </div>
++                <i class="fas fa-history text-2xl text-blue-600 bg-blue-50 p-3 rounded-lg"></i>
++            </div>
++        </div>
++
++        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
++            <div class="flex justify-between items-center">
++                <div>
++                    <p class="text-sm text-gray-500">Aktivitas Ditampilkan</p>
++                    <h2 class="text-2xl font-bold text-gray-800 mt-2">
++                        {{ $logs->count() }}
++                    </h2>
++                </div>
++                <i class="fas fa-list text-2xl text-green-600 bg-green-50 p-3 rounded-lg"></i>
++            </div>
++        </div>
++
++        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
++            <div class="flex justify-between items-center">
++                <div>
++                    <p class="text-sm text-gray-500">Total Modul</p>
++                    <h2 class="text-2xl font-bold text-gray-800 mt-2">
++                        {{ $totalModul ?? 0 }}
++                    </h2>
++                </div>
++                <i class="fas fa-layer-group text-2xl text-purple-600 bg-purple-50 p-3 rounded-lg"></i>
++            </div>
++        </div>
++
++    </div>
++
++    {{-- TABEL DAN FILTER --}}
++    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
++
++            {{-- FORM FILTER --}}
++            <form action="{{ route('admin.log-aktivitas.index') }}" method="GET">
++                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
++
++                    <input
++                        type="text"
++                        name="search"
++                        value="{{ request('search') }}"
++                        placeholder="Cari aktivitas..."
++                        class="border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
++                    >
++
++                    <select name="aksi"
++                        class="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-400 outline-none">
++
++                        <option value="">Semua Aksi</option>
++                        <option value="Tambah" {{ request('aksi') == 'Tambah' ? 'selected' : '' }}>Tambah</option>
++                        <option value="Edit" {{ request('aksi') == 'Edit' ? 'selected' : '' }}>Edit</option>
++                        <option value="Hapus" {{ request('aksi') == 'Hapus' ? 'selected' : '' }}>Hapus</option>
++                    </select>
++
++                    <select name="modul"
++                        class="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-400 outline-none">
++
++                        <option value="">Semua Modul</option>
++                        @foreach($moduls as $modul)
++                            <option value="{{ $modul }}"
++                                {{ request('modul') == $modul ? 'selected' : '' }}>
++                                {{ $modul }}
++                            </option>
++                        @endforeach
++                    </select>
++
++                    <div class="flex gap-2">
++                        <button type="submit"
++                            class="flex-1 bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-4 py-2.5 text-sm font-medium">
++                            <i class="fas fa-filter mr-1"></i> Filter
++                        </button>
++
++                        <a href="{{ route('admin.log-aktivitas.index') }}"
++                            class="flex-1 text-center bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg px-4 py-2.5 text-sm font-medium">
++                            <i class="fas fa-rotate-left mr-1"></i> Reset
++                        </a>
++                    </div>
++
++                </div>
++            </form>
++        </div>
++
++        {{-- TABEL --}}
++        <div class="overflow-x-auto">
++            <table class="w-full text-sm text-left">
++
++                <thead class="bg-gray-50 text-gray-600">
++                    <tr>
++                        <th class="px-5 py-4">No</th>
++                        <th class="px-5 py-4">Waktu</th>
++                        <th class="px-5 py-4">Pengguna</th>
++                        <th class="px-5 py-4">Aksi</th>
++                        <th class="px-5 py-4">Modul</th>
++                        <th class="px-5 py-4">Deskripsi</th>
++                    </tr>
++                </thead>
++
++                <tbody class="divide-y divide-gray-100">
++
++                    @forelse($logs as $log)
++                    <tr class="hover:bg-blue-50 transition">
++
++                        <td class="px-5 py-4 text-gray-500">
++                            {{ $logs->firstItem() + $loop->index }}
++                        </td>
++
++                        <td class="px-5 py-4 whitespace-nowrap text-gray-600">
++                            {{ $log->created_at?->format('d-m-Y H:i') ?? '-' }}
++                        </td>
++
++                        <td class="px-5 py-4 font-medium text-gray-700">
++                            {{ $log->user?->kode_user ?? '-' }}
++                        </td>
++
++                        <td class="px-5 py-4">
++                            @php
++                                $warna = match(strtolower($log->aksi)) {
++                                    'tambah' => 'bg-green-100 text-green-700',
++                                    'edit' => 'bg-blue-100 text-blue-700',
++                                    'hapus' => 'bg-red-100 text-red-700',
++                                    default => 'bg-gray-100 text-gray-600'
++                                };
++                            @endphp
++
++                            <span class="px-3 py-1 rounded-full text-xs font-semibold {{ $warna }}">
++                                {{ $log->aksi }}
++                            </span>
++                        </td>
++
++                        <td class="px-5 py-4 text-gray-700">
++                            {{ $log->modul }}
++                        </td>
++
++                        <td class="px-5 py-4 text-gray-600 min-w-[250px]">
++                            {{ $log->deskripsi }}
++                        </td>
++
++                    </tr>
++                    @empty
++                    <tr>
++                        <td colspan="6" class="p-10 text-center text-gray-500">
++                            <i class="fas fa-inbox text-3xl text-gray-300 mb-3"></i>
++                            <p>Belum ada aktivitas yang ditemukan.</p>
++                        </td>
++                    </tr>
++                    @endforelse
++
++                </tbody>
++            </table>
++        </div>
++
++        {{-- PAGINATION --}}
++        <div class="px-5 py-4 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3">
++
++            <p class="text-sm text-gray-500">
++                Menampilkan {{ $logs->firstItem() ?? 0 }}
++                sampai {{ $logs->lastItem() ?? 0 }}
++                dari {{ $logs->total() }} aktivitas
++            </p>
++
++            <div>
++                {{ $logs->withQueryString()->links() }}
++            </div>
++
++        </div>
++
++    </div>
++</div>
++@endsection
+diff --git a/resources/views/admin/peminjaman/catatan.blade.php b/resources/views/admin/peminjaman/catatan.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/detail.blade.php b/resources/views/admin/peminjaman/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/index.blade.php b/resources/views/admin/peminjaman/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/laporan-bulanan.blade.php b/resources/views/admin/peminjaman/laporan-bulanan.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/pdf-laporan-bulanan.blade.php b/resources/views/admin/peminjaman/pdf-laporan-bulanan.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/pdf.blade.php b/resources/views/admin/peminjaman/pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/pengembalian/cetak.blade.php b/resources/views/admin/pengembalian/cetak.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/pengembalian/detail.blade.php b/resources/views/admin/pengembalian/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/pengembalian/index.blade.php b/resources/views/admin/pengembalian/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/perawatan_inventaris/detail.blade.php b/resources/views/admin/perawatan_inventaris/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/perawatan_inventaris/index.blade.php b/resources/views/admin/perawatan_inventaris/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/perawatan_inventaris/perbaiki.blade.php b/resources/views/admin/perawatan_inventaris/perbaiki.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peruntukan/index.blade.php b/resources/views/admin/peruntukan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/profile/index.blade.php b/resources/views/admin/profile/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/rencana_penghapusan/index.blade.php b/resources/views/admin/rencana_penghapusan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/rencana_penghapusan/pdf.blade.php b/resources/views/admin/rencana_penghapusan/pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/slider/index.blade.php b/resources/views/admin/slider/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/create.blade.php b/resources/views/admin/studio2/create.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/detail.blade.php b/resources/views/admin/studio2/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/edit.blade.php b/resources/views/admin/studio2/edit.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/index.blade.php b/resources/views/admin/studio2/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/print.blade.php b/resources/views/admin/studio2/print.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/create.blade.php b/resources/views/admin/user/create.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/detail.blade.php b/resources/views/admin/user/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/edit.blade.php b/resources/views/admin/user/edit.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/id-card.blade.php b/resources/views/admin/user/id-card.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/index.blade.php b/resources/views/admin/user/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/log.blade.php b/resources/views/admin/user/log.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/auth/forgot-password.blade.php b/resources/views/auth/forgot-password.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/auth/index.blade.php b/resources/views/auth/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/auth/password-adm.blade.php b/resources/views/auth/password-adm.blade.php
+old mode 100755
+new mode 100644
+index 1ea7334..9c81f86
+--- a/resources/views/auth/password-adm.blade.php
++++ b/resources/views/auth/password-adm.blade.php
+@@ -17,6 +17,7 @@
+     .bmn-pattern {
+         background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg stroke='%23ffffff' stroke-width='0.5' stroke-opacity='0.08'%3E%3Cpath d='M40 40c0-11.046-8.954-20-20-20S0 28.954 0 40s8.954 20 20 20 20-8.954 20-20zm40 0c0-11.046-8.954-20-20-20s-20 8.954-20 20 8.954 20 20 20 20-8.954 20-20zM0 0c0 11.046 8.954 20 20 20s20-8.954 20-20-8.954-20-20-20S0-11.046 0 0zm40 0c0 11.046 8.954 20 20 20s20-8.954 20-20-8.954-20-20-20-20 8.954-20 20z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+     }
++    
+ </style>
+ 
+ <div class="min-h-screen flex relative overflow-hidden items-center justify-center font-sans px-4">
+diff --git a/resources/views/auth/reset-password.blade.php b/resources/views/auth/reset-password.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/auth/template.blade.php b/resources/views/auth/template.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/auth-validation.blade.php b/resources/views/components/auth-validation.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/badge-status.blade.php b/resources/views/components/badge-status.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/credit-modal.blade.php b/resources/views/components/credit-modal.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/empty-data.blade.php b/resources/views/components/empty-data.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/filter-user-by-jabatan.blade.php b/resources/views/components/filter-user-by-jabatan.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/filter-user-by-role.blade.php b/resources/views/components/filter-user-by-role.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/head/tinymce-config.blade.php b/resources/views/components/head/tinymce-config.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/modal-delete.blade.php b/resources/views/components/modal-delete.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/peminjam-profile.blade.php b/resources/views/components/peminjam-profile.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/401.blade.php b/resources/views/errors/401.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/402.blade.php b/resources/views/errors/402.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/403.blade.php b/resources/views/errors/403.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/404.blade.php b/resources/views/errors/404.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/419.blade.php b/resources/views/errors/419.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/429.blade.php b/resources/views/errors/429.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/500.blade.php b/resources/views/errors/500.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/503.blade.php b/resources/views/errors/503.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/minimal.blade.php b/resources/views/errors/minimal.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/admin/main.blade.php b/resources/views/layouts/admin/main.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/admin/partials/breadcrumb.blade.php b/resources/views/layouts/admin/partials/breadcrumb.blade.php
+old mode 100755
+new mode 100644
+index f8c4226..f4ce02c
+--- a/resources/views/layouts/admin/partials/breadcrumb.blade.php
++++ b/resources/views/layouts/admin/partials/breadcrumb.blade.php
+@@ -1,26 +1,44 @@
++
+ <div class="p-3 mt-12">
+-  <nav class="flex flex-col md:flex-row justify-between items-start md:items-center px-3 py-3" aria-label="Breadcrumb">
+-    <div class="text-3xl font-bold text-tvri_base_color dark:text-white mb-2 md:mb-0">
+-      {{ $title }}
+-    </div>
+-
+-    <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse text-gray-700 dark:text-gray-400">
+-      <li class="inline-flex items-center">
+-        <a href="{{ route('dashboard.index') }}"
+-          class="inline-flex items-center text-sm font-medium hover:text-tvri_base_color dark:hover:text-white">
+-          Home
+-        </a>
+-      </li>
+-      <li aria-current="page">
+-        <div class="flex items-center">
+-          <svg class="rtl:rotate-180 w-3 h-3 mx-1 text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+-            fill="none" viewBox="0 0 6 10">
+-            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+-              d="m1 9 4-4-4-4" />
+-          </svg>
+-          <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2 dark:text-gray-400">{{ $title }}</span>
++    <nav class="flex flex-col md:flex-row justify-between items-start md:items-center px-3 py-3"
++        aria-label="Breadcrumb">
++
++        {{-- JUDUL HALAMAN --}}
++        <div class="text-3xl font-bold text-tvri_base_color dark:text-white mb-2 md:mb-0">
++            {{ $title ?? 'Dashboard' }}
+         </div>
+-      </li>
+-    </ol>
+-  </nav>
++
++        {{-- BREADCRUMB NAVIGASI --}}
++        <ol class="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse text-gray-700 dark:text-gray-400">
++
++            <li class="inline-flex items-center">
++                <a href="{{ route('dashboard.index') }}"
++                    class="inline-flex items-center text-sm font-medium hover:text-tvri_base_color dark:hover:text-white">
++                    Home
++                </a>
++            </li>
++
++            <li aria-current="page">
++                <div class="flex items-center">
++                    <svg class="rtl:rotate-180 w-3 h-3 mx-1 text-gray-400"
++                        aria-hidden="true"
++                        xmlns="http://www.w3.org/2000/svg"
++                        fill="none"
++                        viewBox="0 0 6 10">
++
++                        <path stroke="currentColor"
++                            stroke-linecap="round"
++                            stroke-linejoin="round"
++                            stroke-width="2"
++                            d="m1 9 4-4-4-4" />
++                    </svg>
++
++                    <span class="ml-1 text-sm font-medium text-gray-500 md:ml-2 dark:text-gray-400">
++                        {{ $title ?? 'Dashboard' }}
++                    </span>
++                </div>
++            </li>
++
++        </ol>
++    </nav>
+ </div>
+diff --git a/resources/views/layouts/admin/partials/navbar.blade.php b/resources/views/layouts/admin/partials/navbar.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/admin/partials/sidebar.blade.php b/resources/views/layouts/admin/partials/sidebar.blade.php
+old mode 100755
+new mode 100644
+index 0d004d8..7d0618a
+--- a/resources/views/layouts/admin/partials/sidebar.blade.php
++++ b/resources/views/layouts/admin/partials/sidebar.blade.php
+@@ -182,6 +182,18 @@ class="w-8 h-8 flex items-center justify-center rounded-lg {{ request()->routeIs
+                 </a>
+             </li>
+ 
++            {{-- Log Aktivitas --}}
++            <li>
++                <a href="{{ route('admin.log-aktivitas.index') }}"
++                    class="nav-item flex items-center p-2.5 rounded-xl transition-all {{ request()->routeIs('admin.log-aktivitas.*') ? $activeClass : $inactiveClass }}">
++                    <div
++                        class="w-8 h-8 flex items-center justify-center rounded-lg {{ request()->routeIs('admin.log-aktivitas.*') ? 'bg-blue-500' : 'bg-white/5' }} mr-1">
++                        <i class="fa-solid fa-history text-sm"></i>
++                    </div>
++                    <span class="ms-2 text-sm font-medium">Log Aktivitas</span>
++                </a>
++            </li>
++
+             {{-- === USER SECTION === --}}
+             <li class="pt-4 pb-2">
+                 <div class="flex items-center px-3">
+diff --git a/resources/views/layouts/admin/partials/validation.blade.php b/resources/views/layouts/admin/partials/validation.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/user/main.blade.php b/resources/views/layouts/user/main.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/user/partials/footer.blade.php b/resources/views/layouts/user/partials/footer.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/user/partials/navbar.blade.php b/resources/views/layouts/user/partials/navbar.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/qr_all.blade.php b/resources/views/qr_all.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/inventaris.blade.php b/resources/views/user/inventaris.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/inventaris/detail.blade.php b/resources/views/user/inventaris/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/inventaris/hasil_scan_rak.blade.php b/resources/views/user/inventaris/hasil_scan_rak.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/inventaris/lapor_kerusakan.blade.php b/resources/views/user/inventaris/lapor_kerusakan.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/inventaris/show_all.blade.php b/resources/views/user/inventaris/show_all.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/laporan/peminjaman/index.blade.php b/resources/views/user/laporan/peminjaman/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/laporan/peminjaman/report.blade.php b/resources/views/user/laporan/peminjaman/report.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/laporan/pengembalian/index.blade.php b/resources/views/user/laporan/pengembalian/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/laporan/pengembalian/report.blade.php b/resources/views/user/laporan/pengembalian/report.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/options.blade.php b/resources/views/user/options.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/peminjaman/index.blade.php b/resources/views/user/peminjaman/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/pengembalian/index.blade.php b/resources/views/user/pengembalian/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/profil.blade.php b/resources/views/user/profil.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/welcome.blade.php b/resources/views/welcome.blade.php
+old mode 100755
+new mode 100644
+diff --git a/routes/console.php b/routes/console.php
+old mode 100755
+new mode 100644
+diff --git a/routes/web.php b/routes/web.php
+old mode 100755
+new mode 100644
+index 0512739..5692083
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -22,6 +22,7 @@
+ use App\Http\Controllers\Admin\DataPenghapusanController;
+ use App\Http\Controllers\Admin\LaporanKerusakanAdminController;
+ use App\Http\Controllers\Admin\AntreanPerbaikanController;
++use App\Http\Controllers\Admin\ActivityLogController;
+ 
+ use App\Http\Controllers\User\PeminjamanController as UserPeminjamanController;
+ use App\Http\Controllers\User\PeminjamanController as PeminjamanUser;
+@@ -248,6 +249,12 @@
+         Route::delete('/destroy/{uuid}', [BmnController::class, 'unitKerjaDestroy'])->name('bmn.unit_kerja.destroy');
+         Route::get('/search', [BmnController::class, 'unitKerjaSearch'])->name('bmn.unit_kerja.search');
+        });
++
++       Route::prefix('admin')->middleware(['auth', 'role:superadmin,admin'])->group(function () {
++          Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])
++              ->name('admin.log-aktivitas.index');
++        });
++        
+       // --- END ROUTES BARU ---
+ 
+       Route::get('/qr-all/download', [BmnController::class, 'downloadQRAll'])->name('bmn.qr_all.download');

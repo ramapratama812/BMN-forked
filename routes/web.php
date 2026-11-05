@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\RencanaPenghapusanController;
 use App\Http\Controllers\Admin\DataPenghapusanController;
 use App\Http\Controllers\Admin\LaporanKerusakanAdminController;
 use App\Http\Controllers\Admin\AntreanPerbaikanController;
+use App\Http\Controllers\Admin\ActivityLogController;
 
 use App\Http\Controllers\User\PeminjamanController as UserPeminjamanController;
 use App\Http\Controllers\User\PeminjamanController as PeminjamanUser;
@@ -250,6 +251,12 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/destroy/{uuid}', [BmnController::class, 'unitKerjaDestroy'])->name('bmn.unit_kerja.destroy');
         Route::get('/search', [BmnController::class, 'unitKerjaSearch'])->name('bmn.unit_kerja.search');
        });
+
+       Route::prefix('admin')->middleware(['auth', 'role:superadmin,admin'])->group(function () {
+          Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])
+              ->name('admin.log-aktivitas.index');
+        });
+
       // --- END ROUTES BARU ---
 
       Route::get('/qr-all/download', [BmnController::class, 'downloadQRAll'])->name('bmn.qr_all.download');

@@ -8,6 +8,7 @@ use App\Models\BmnRuangan;
 use App\Models\BmnKategori;
 use App\Models\UnitKerja;
 use App\Models\JenisBarang;
+use App\Helpers\ActivityLogger;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -165,19 +166,26 @@ class BarangController extends Controller
         }
 
         Barang::create([
-            'uuid' => Str::uuid(),
-            'kode_barang' => $kode_barang,
-            'nama_barang' => $request->nama_barang,
-            'nomor_seri' => $request->nomor_seri,
-            'merk' => $request->merk,
-            'jenis_barang_id' => $request->jenis_barang_id,
-            'status' => $request->limit == 0 ? 'tidak-tersedia' : 'tersedia',
-            'limit' => $request->limit,
-            'sisa_limit' => $request->limit,
-            'foto' => $data['foto'],
-            'deskripsi' => $request->deskripsi,
-            'qr_code' => $qrCodeFileName,
-        ]);
+                'uuid' => Str::uuid(),
+                'kode_barang' => $kode_barang,
+                'nama_barang' => $request->nama_barang,
+                'nomor_seri' => $request->nomor_seri,
+                'merk' => $request->merk,
+                'jenis_barang_id' => $request->jenis_barang_id,
+                'status' => $request->limit == 0 ? 'tidak-tersedia' : 'tersedia',
+                'limit' => $request->limit,
+                'sisa_limit' => $request->limit,
+                'foto' => $data['foto'],
+                'deskripsi' => $request->deskripsi,
+                'qr_code' => $qrCodeFileName,
+            ]);
+
+            ActivityLogger::catat(
+                'Tambah',
+                'Barang',
+                'Menambahkan barang "' . $barang->nama_barang . '"'
+            );
+
 
         notify()->success('Barang Berhasil Ditambahkan');
         return redirect()->route('barang.index');
@@ -252,6 +260,8 @@ class BarangController extends Controller
             Storage::disk('public')->put('uploads/foto_barang/' . $filename, $encoded);
         }
 
+        $namaLama = $barang->nama_barang;
+
         $barang->update([
             'nama_barang' => $request->nama_barang,
             'nomor_seri' => $request->nomor_seri,
@@ -262,6 +272,12 @@ class BarangController extends Controller
             'deskripsi' => $request->deskripsi,
             'foto' => $filename,
         ]);
+
+        ActivityLogger::catat(
+            'Edit',
+            'Barang',
+            'Mengubah barang "' . $namaLama . '" menjadi "' . $barang->nama_barang . '"'
+        );
 
         notify()->success('Barang Berhasil Diupdate');
 
@@ -282,7 +298,16 @@ class BarangController extends Controller
             if ($barang->foto && $barang->foto !== 'default.jpg') {
                 Storage::disk('public')->delete('uploads/foto_barang/' . $barang->foto);
             }
+
+            $namaBarang = $barang->nama_barang;
             $barang->delete();
+
+            ActivityLogger::catat(
+                'Hapus',
+                'Barang',
+                'Menghapus barang "' . $namaBarang . '"'
+            );
+
             notify()->success('Barang Berhasil Dihapus');
             return redirect()->route('barang.index', ['page' => $request->page]);
         }

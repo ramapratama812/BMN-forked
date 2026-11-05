@@ -19,6 +19,8 @@ use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Illuminate\Validation\Rule;
 use App\Models\PerawatanInventaris;
+use App\Helpers\ActivityLogger;
+
 class BmnController extends Controller
 {
     private function tentukanKondisi($persentase)
@@ -249,6 +251,12 @@ class BmnController extends Controller
             'nama_jenis_kerusakan' => $request->nama_jenis_kerusakan
         ]);
 
+        ActivityLogger::catat(
+            'Tambah',
+            'Jenis Kerusakan',
+            'Menambahkan jenis kerusakan "' . $jenisKerusakan->nama_jenis_kerusakan . '"'
+        );
+
         return redirect()->back()->with('success', 'Jenis kerusakan berhasil ditambahkan.');
     }
 
@@ -268,7 +276,15 @@ class BmnController extends Controller
             'nama_jenis_kerusakan.unique'   => 'Nama jenis kerusakan sudah terdaftar, gunakan nama lain.',
         ]);
 
+        $namaLama = $data->nama_jenis_kerusakan;
         $data->update(['nama_jenis_kerusakan' => $request->nama_jenis_kerusakan]);
+
+        ActivityLogger::catat(
+            'Edit',
+            'Jenis Kerusakan',
+            'Mengubah jenis kerusakan "' . $namaLama . '" menjadi "' . $data->nama_jenis_kerusakan . '"'
+        );
+
         return response()->json(['success' => true]);
     }
 
@@ -322,7 +338,14 @@ class BmnController extends Controller
             'nip'  => 'required|string|max:50|unique:penggunas,nip,' . $pengguna->id,
         ]);
 
+        $namaLama = $pengguna->nama;
         $pengguna->update($validated);
+
+        ActivityLogger::catat(
+            'Edit',
+            'Pengguna',
+            'Mengubah pengguna "' . $namaLama . '" menjadi "' . $pengguna->nama . '"'
+        );
 
         return response()->json(['success' => true]);
     }
@@ -712,7 +735,14 @@ class BmnController extends Controller
 
         unset($validated['ruangan_pilihan'], $validated['user_id'], $validated['tipe_penempatan'], $validated['unit_kerja_pilihan']);
 
+        $namaLama = $barang->nama_barang;
         $barang->update($validated);
+
+        ActivityLogger::catat(
+            'Edit',
+            'Barang',
+            'Mengubah barang "' . $namaLama . '" menjadi "' . $barang->nama_barang . '"'
+        );
 
         return redirect()->route('barang.bmn_index')
             ->with('success', 'Data barang BMN berhasil diperbarui.');
@@ -733,7 +763,14 @@ class BmnController extends Controller
     Storage::disk('public')->delete($barang->qr_code);
     }
 
+    $namaBarang = $barang->nama_barang;
     $barang->delete();
+
+    ActivityLogger::catat(
+        'Hapus',
+        'Barang',
+        'Menghapus barang "' . $namaBarang . '"'
+    );
 
     return redirect()->route('barang.bmn_index', $ruangan)
     ->with('success', 'Barang berhasil dihapus.');

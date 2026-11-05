@@ -1,0 +1,3259 @@
+diff --git a/app/Console/Commands/OptimizeOldImages.php b/app/Console/Commands/OptimizeOldImages.php
+old mode 100755
+new mode 100644
+diff --git a/app/Console/Commands/RepairMissingBarangQr.php b/app/Console/Commands/RepairMissingBarangQr.php
+old mode 100755
+new mode 100644
+diff --git a/app/Console/Commands/RepairMissingUserQr.php b/app/Console/Commands/RepairMissingUserQr.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/BarangController.php b/app/Http/Controllers/Admin/BarangController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/BmnController.php b/app/Http/Controllers/Admin/BmnController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/DashboardController.php b/app/Http/Controllers/Admin/DashboardController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/DataPenghapusanController.php b/app/Http/Controllers/Admin/DataPenghapusanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/GuideBookController.php b/app/Http/Controllers/Admin/GuideBookController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/JabatanController.php b/app/Http/Controllers/Admin/JabatanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/JenisBarangController.php b/app/Http/Controllers/Admin/JenisBarangController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/LaporanKerusakanAdminController.php b/app/Http/Controllers/Admin/LaporanKerusakanAdminController.php
+old mode 100755
+new mode 100644
+index 9dffa31..076c8e6
+--- a/app/Http/Controllers/Admin/LaporanKerusakanAdminController.php
++++ b/app/Http/Controllers/Admin/LaporanKerusakanAdminController.php
+@@ -51,6 +51,17 @@ public function tolak($uuid)
+             ->with('success', 'Laporan telah ditolak dan dihapus dari daftar antrean.');
+     }
+ 
++    public function riwayatDitolak()
++{
++    $laporan = LaporanKerusakan::with(['barang', 'user'])
++        ->where('status', 'ditolak')
++        ->orderBy('updated_at', 'desc')
++        ->paginate(10);
++
++    $title = 'Riwayat Laporan Ditolak';
++
++    return view('admin.laporan_kerusakan.riwayat_ditolak', compact('laporan', 'title'));
++}
+     public function exportPDF()
+     {
+         // Tambahkan 'user' di dalam with()
+diff --git a/app/Http/Controllers/Admin/PeminjamanController.php b/app/Http/Controllers/Admin/PeminjamanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/PengembalianController.php b/app/Http/Controllers/Admin/PengembalianController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/PerawatanController.php b/app/Http/Controllers/Admin/PerawatanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/PerawatanInventarisController.php b/app/Http/Controllers/Admin/PerawatanInventarisController.php
+old mode 100755
+new mode 100644
+index 4a50619..f3d13d0
+--- a/app/Http/Controllers/Admin/PerawatanInventarisController.php
++++ b/app/Http/Controllers/Admin/PerawatanInventarisController.php
+@@ -12,30 +12,33 @@
+ 
+ class PerawatanInventarisController extends Controller
+ {
+-    public function index(Request $request)
+-    {
+-        // 1. Ambil ID barang yang sudah ditarik ke daftar Rencana Penghapusan
+-        $barangDihapusIds = PerawatanInventaris::where('jenis_perawatan', 'rencana_penghapusan')
+-            ->pluck('barang_id');
+-
+-        // 2. Filter query utama agar barang yang mau dihapus hilang dari antrean
+-        $query = PerawatanInventaris::with('barang')
+-            ->where('jenis_perawatan', 'perbaikan')
+-            ->where('status', '!=', 'selesai')
+-            ->whereNotIn('barang_id', $barangDihapusIds); // <-- Tambahkan logika ini
+-
+-        // (Opsional) Jika Anda ingin filter di view tetap berfungsi untuk 'search'
+-        if ($request->has('search') && $request->search != '') {
+-            $query->whereHas('barang', function ($q) use ($request) {
+-                $q->where('nama_barang', 'like', '%' . $request->search . '%');
+-            });
+-        }
++    
++public function index(Request $request)
++{
++    // Ambil ID barang yang sudah diajukan atau sudah masuk penghapusan
++    $barangDikecualikan = PerawatanInventaris::whereIn(
++        'jenis_perawatan',
++        ['rencana_penghapusan', 'penghapusan']
++    )->pluck('barang_id')->unique();
++
++    // Tampilkan antrean perbaikan yang belum selesai
++    $query = PerawatanInventaris::with('barang')
++        ->where('jenis_perawatan', 'perbaikan')
++        ->where('status', '!=', 'selesai')
++        ->whereNotIn('barang_id', $barangDikecualikan);
++
++    if ($request->filled('search')) {
++        $query->whereHas('barang', function ($q) use ($request) {
++            $q->where('nama_barang', 'like', '%' . $request->search . '%');
++        });
++    }
+ 
+-        $data = $query->latest()->get();
++    $data = $query->latest()->get();
+ 
+-        $title = "Perawatan Inventaris";
+-        return view('admin.perawatan_inventaris.index', compact('data', 'title'));
+-    }
++    $title = "Perawatan Inventaris";
++
++    return view('admin.perawatan_inventaris.index', compact('data', 'title'));
++}
+ 
+     public function detail($id)
+     {
+diff --git a/app/Http/Controllers/Admin/PeruntukanController.php b/app/Http/Controllers/Admin/PeruntukanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/ProfileController.php b/app/Http/Controllers/Admin/ProfileController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/RencanaPenghapusanController.php b/app/Http/Controllers/Admin/RencanaPenghapusanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/SliderController.php b/app/Http/Controllers/Admin/SliderController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/Studio2Controller.php b/app/Http/Controllers/Admin/Studio2Controller.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Admin/UserController.php b/app/Http/Controllers/Admin/UserController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/AuthController.php b/app/Http/Controllers/AuthController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/Controller.php b/app/Http/Controllers/Controller.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/QrController.php b/app/Http/Controllers/QrController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/User/InventarisUserController.php b/app/Http/Controllers/User/InventarisUserController.php
+old mode 100755
+new mode 100644
+index 3b23ae8..439f52e
+--- a/app/Http/Controllers/User/InventarisUserController.php
++++ b/app/Http/Controllers/User/InventarisUserController.php
+@@ -16,11 +16,13 @@ class InventarisUserController extends Controller
+     public function index()
+     {
+         $title = "Inventaris Barang";
+-        // Filter agar barang yang sudah di 'penghapusan' tidak tampil
++
+         $barang = BmnBarang::with('perawatan')
+             ->whereDoesntHave('perawatan', function ($q) {
+                 $q->where('jenis_perawatan', 'penghapusan');
+-            })->latest()->paginate(10);
++            })
++            ->latest()
++            ->paginate(10);
+ 
+         return view('user.inventaris', compact('title', 'barang'));
+     }
+@@ -28,62 +30,77 @@ public function index()
+     public function showAll()
+     {
+         $title = "Semua Inventaris (Scan ALL)";
++
+         $barang = BmnBarang::with('perawatan')
+             ->whereDoesntHave('perawatan', function ($q) {
+                 $q->where('jenis_perawatan', 'penghapusan');
+-            })->latest()->paginate(12);
++            })
++            ->latest()
++            ->paginate(12);
++
+         $ruangan = request('ruangan') ?? 'default';
+-        return view('user.inventaris.show_all', compact('title', 'barang','ruangan'));
++
++        return view(
++            'user.inventaris.show_all',
++            compact('title', 'barang', 'ruangan')
++        );
+     }
+ 
+-    public function scan(Request $request, $kode) // <-- Tambahkan Request $request
++    public function scan(Request $request, $kode)
+     {
+         $kode = trim($kode);
+-        $from = $request->query('from'); // <-- Tangkap parameter asal
++        $from = $request->query('from');
+ 
+         if (strtoupper($kode) === 'ALL') {
+-            return redirect()->route('user.inventaris.show_all')
++            return redirect()
++                ->route('user.inventaris.show_all')
+                 ->with('success', 'Menampilkan semua barang.');
+         }
+ 
+-        // Pastikan QR yang di scan bukan barang yang sudah di 'penghapusan'
+         $barang = BmnBarang::whereDoesntHave('perawatan', function ($q) {
+                 $q->where('jenis_perawatan', 'penghapusan');
+-            })->where('kode_barang', $kode)->first();
++            })
++            ->where('kode_barang', $kode)
++            ->first();
+ 
+         if ($barang) {
+-            // <-- Teruskan parameter 'from' ke halaman detail
+             return redirect()->route('user.inventaris.detail', [
+                 'id' => $barang->id,
+-                'from' => $from
++                'from' => $from,
+             ]);
+         }
+ 
+-        return redirect()->route('user.inventaris.show_all')
+-            ->with('warning', 'QR tidak dikenali atau barang sudah dihapus. Menampilkan semua barang.');
++        return redirect()
++            ->route('user.inventaris.show_all')
++            ->with(
++                'warning',
++                'QR tidak dikenali atau barang sudah dihapus. Menampilkan semua barang.'
++            );
+     }
+ 
+     public function detail($id)
+     {
+-        // Pastikan load perawatan dan pastikan bukan barang terhapus
+         $barang = BmnBarang::with('perawatan')
+             ->whereDoesntHave('perawatan', function ($q) {
+                 $q->where('jenis_perawatan', 'penghapusan');
+-            })->findOrFail($id);
++            })
++            ->findOrFail($id);
+ 
+         $title = "Detail Barang";
+ 
+-        return view('user.inventaris.detail', compact('title', 'barang'));
++        return view(
++            'user.inventaris.detail',
++            compact('title', 'barang')
++        );
+     }
+ 
+     /**
+-     * Download Universal QR Inventaris (tetap menggunakan route name user.inventaris.scan)
++     * Download QR Inventaris.
+      */
+     public function downloadAllQR()
+     {
+         $url = route('user.inventaris.scan', 'ALL');
+ 
+-        // Generate QR dalam memori
+         $qrData = QrCode::format('png')
+             ->size(600)
+             ->margin(1)
+@@ -98,76 +115,118 @@ public function downloadAllQR()
+             if (file_exists($logoPath)) {
+                 $logo = new Imagick($logoPath);
+ 
+-                // Resize tetap proporsional
+                 $logoSize = intval($qr->getImageWidth() * 0.20);
+-                $logo->resizeImage($logoSize, $logoSize, Imagick::FILTER_LANCZOS, 1);
+ 
+-                // Posisi tengah
++                $logo->resizeImage(
++                    $logoSize,
++                    $logoSize,
++                    Imagick::FILTER_LANCZOS,
++                    1
++                );
++
+                 $x = intval(($qr->getImageWidth() - $logoSize) / 2);
+                 $y = intval(($qr->getImageHeight() - $logoSize) / 2);
+ 
+-                $qr->compositeImage($logo, Imagick::COMPOSITE_OVER, $x, $y);
++                $qr->compositeImage(
++                    $logo,
++                    Imagick::COMPOSITE_OVER,
++                    $x,
++                    $y
++                );
++
++                $logo->clear();
++                $logo->destroy();
+             }
+ 
+             $qrOutput = $qr->getImageBlob();
+ 
+-            return Response::streamDownload(function () use ($qrOutput) {
+-                echo $qrOutput;
+-            }, 'QR-Inventaris.png', [
+-                'Content-Type' => 'image/png'
+-            ]);
++            $qr->clear();
++            $qr->destroy();
++
++            return Response::streamDownload(
++                function () use ($qrOutput) {
++                    echo $qrOutput;
++                },
++                'QR-Inventaris.png',
++                [
++                    'Content-Type' => 'image/png',
++                ]
++            );
+ 
+         } catch (ImagickException $e) {
+-            return back()->with('error', 'Gagal membuat QR. Error: ' . $e->getMessage());
++            return back()->with(
++                'error',
++                'Gagal membuat QR. Error: ' . $e->getMessage()
++            );
+         }
+     }
+ 
++    /**
++     * Form laporan kerusakan.
++     */
+     public function laporKerusakanForm($id)
+     {
+         $barang = BmnBarang::findOrFail($id);
+-        // Pastikan path view sesuai dengan letak file .blade.php Anda
+-        // Jika file ada di resources/views/user/inventaris/lapor_kerusakan.blade.php
+-        return view('user.inventaris.lapor_kerusakan', compact('barang'));
++
++        return view(
++            'user.inventaris.lapor_kerusakan',
++            compact('barang')
++        );
+     }
+ 
++    /**
++     * Menyimpan laporan kerusakan inventaris.
++     */
+     public function laporKerusakanSubmit(Request $request)
+     {
+         $request->validate([
+             'barang_id' => 'required|exists:bmn_barangs,id',
+-            'jenis_kerusakan' => 'required|string', // Tambahkan ini
++            'jenis_kerusakan' => 'required|string',
+             'deskripsi' => 'required|string',
+-            'foto'      => 'required|image|mimes:jpg,jpeg,png|max:2048',
++            'foto' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+         ]);
+ 
+-        $path = $request->file('foto')->store('laporan/foto', 'public');
++        $path = $request->file('foto')->store(
++            'laporan/foto',
++            'public'
++        );
+ 
+         PerawatanInventaris::create([
+             'barang_id' => $request->barang_id,
+             'tanggal_perawatan' => now(),
+-            'deskripsi' => $request->jenis_kerusakan . ' - ' . $request->deskripsi, // Gabungkan agar tersimpan
++            'deskripsi' => $request->jenis_kerusakan
++                . ' - '
++                . $request->deskripsi,
+             'foto' => $path,
+             'status' => 'pending',
+-            'jenis' => 'laporan_kerusakan'
++            'jenis' => 'laporan_kerusakan',
+         ]);
+ 
+-        return redirect()->route('user.inventaris.detail', $request->barang_id)
+-            ->with('success', 'Laporan kerusakan berhasil dikirim.');
++        return redirect()
++            ->route('user.inventaris.detail', $request->barang_id)
++            ->with(
++                'success',
++                'Laporan kerusakan berhasil dikirim.'
++            );
+     }
+ 
++    /**
++     * Menampilkan barang berdasarkan nama rak.
++     */
+     public function scanRak($nama_rak)
+     {
+         $nama_rak = urldecode($nama_rak);
+ 
+-        // Cari barang, load perawatan, dan kecualikan yang sudah di 'penghapusan'
+-        $barang = \App\Models\BmnBarang::with('perawatan')
++        $barang = BmnBarang::with('perawatan')
+             ->whereDoesntHave('perawatan', function ($q) {
+                 $q->where('jenis_perawatan', 'penghapusan');
+-            })->where('ruangan', $nama_rak)->get();
++            })
++            ->where('ruangan', $nama_rak)
++            ->get();
+ 
+         return view('user.inventaris.hasil_scan_rak', [
+             'barang' => $barang,
+-            'nama_rak' => $nama_rak
++            'nama_rak' => $nama_rak,
+         ]);
+     }
+-
+-}
++}
+\ No newline at end of file
+diff --git a/app/Http/Controllers/User/LaporanKerusakanController.php b/app/Http/Controllers/User/LaporanKerusakanController.php
+old mode 100755
+new mode 100644
+index 5248c8c..cd441bb
+--- a/app/Http/Controllers/User/LaporanKerusakanController.php
++++ b/app/Http/Controllers/User/LaporanKerusakanController.php
+@@ -14,39 +14,141 @@ class LaporanKerusakanController extends Controller
+     public function form($id)
+     {
+         $barang = BmnBarang::findOrFail($id);
+-
+         $jenis_kerusakan = BmnJenisKerusakan::all();
+ 
+-        return view('user.inventaris.lapor_kerusakan', compact('barang', 'jenis_kerusakan'));
++        return view(
++            'user.inventaris.lapor_kerusakan',
++            compact('barang', 'jenis_kerusakan')
++        );
+     }
+ 
+     public function store(Request $request)
+     {
++        // Validasi data laporan dan file unggahan.
+         $request->validate([
+-            'barang_id' => 'required',
+-            'jenis_kerusakan' => 'required',
+-            'deskripsi' => 'required',
+-            'foto' => 'nullable|image|max:4096'
++            'barang_id' => [
++                'required',
++                'exists:bmn_barangs,id',
++            ],
++
++            'jenis_kerusakan' => [
++                'required',
++            ],
++
++            'deskripsi' => [
++                'required',
++                'string',
++            ],
++
++            // Foto opsional, hanya JPG/JPEG/PNG, maksimal 4 MB.
++            'foto' => [
++                'nullable',
++                'image',
++                'mimes:jpg,jpeg,png',
++                'max:4096',
++            ],
++
++            // Dokumen pendukung opsional, maksimal 10 MB.
++            'dokumen_bukti' => [
++                'nullable',
++                'file',
++                'mimes:pdf,doc,docx',
++                'max:10240',
++            ],
++        ], [
++            'barang_id.required' =>
++                'Barang wajib dipilih.',
++
++            'barang_id.exists' =>
++                'Barang yang dipilih tidak ditemukan.',
++
++            'jenis_kerusakan.required' =>
++                'Jenis kerusakan wajib dipilih.',
++
++            'deskripsi.required' =>
++                'Deskripsi kerusakan wajib diisi.',
++
++            'foto.image' =>
++                'File bukti harus berupa gambar yang valid.',
++
++            'foto.mimes' =>
++                'Format foto bukti harus JPG, JPEG, atau PNG.',
++
++            'foto.max' =>
++                'Ukuran foto bukti maksimal 4 MB.',
++
++            'dokumen_bukti.file' =>
++                'Dokumen pendukung tidak valid.',
++
++            'dokumen_bukti.mimes' =>
++                'Dokumen harus berformat PDF, DOC, atau DOCX.',
++
++            'dokumen_bukti.max' =>
++                'Ukuran dokumen pendukung maksimal 10 MB.',
+         ]);
+ 
++        $userId = Auth::id();
++        $deskripsi = trim($request->deskripsi);
++
++        // Cek laporan identik yang masih aktif.
++        $duplikat = LaporanKerusakan::where(
++                'barang_id',
++                $request->barang_id
++            )
++            ->where('user_id', $userId)
++            ->where('jenis_kerusakan', $request->jenis_kerusakan)
++            ->where('deskripsi', $deskripsi)
++            ->whereIn('status', ['pending', 'disetujui'])
++            ->exists();
++
++        // Batalkan jika laporan yang sama masih aktif.
++        if ($duplikat) {
++            return redirect()
++                ->route('user.inventaris.detail', [
++                    'id' => $request->barang_id,
++                    'from' => $request->from,
++                ])
++                ->with(
++                    'error',
++                    'Laporan yang sama sudah ada dan masih dalam proses.'
++                );
++        }
++
++        // Simpan foto jika lolos validasi.
+         $foto = null;
++
+         if ($request->hasFile('foto')) {
+-            $foto = $request->file('foto')->store('laporan/kerusakan', 'public');
++            $foto = $request->file('foto')
++                ->store('laporan/kerusakan', 'public');
++        }
++
++        // Simpan dokumen jika lolos validasi.
++        $dokumenPath = null;
++
++        if ($request->hasFile('dokumen_bukti')) {
++            $dokumenPath = $request->file('dokumen_bukti')
++                ->store('laporan/dokumen', 'public');
+         }
+ 
++        // Simpan laporan baru.
+         LaporanKerusakan::create([
+             'barang_id' => $request->barang_id,
+-            'user_id' => Auth::id(),
++            'user_id' => $userId,
+             'jenis_kerusakan' => $request->jenis_kerusakan,
+-            'deskripsi' => $request->deskripsi,
++            'deskripsi' => $deskripsi,
+             'foto' => $foto,
++            'dokumen_bukti' => $dokumenPath,
+             'status' => 'pending',
+         ]);
+ 
+-        return redirect()->route('user.inventaris.detail', [
++        return redirect()
++            ->route('user.inventaris.detail', [
+                 'id' => $request->barang_id,
+-                'from' => $request->from // Mengembalikan parameter from ke URL
++                'from' => $request->from,
+             ])
+-            ->with('success', 'Laporan telah dikirim, menunggu verifikasi admin.');
++            ->with(
++                'success',
++                'Laporan telah dikirim, menunggu verifikasi admin.'
++            );
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/app/Http/Controllers/User/OptionsController.php b/app/Http/Controllers/User/OptionsController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/User/PeminjamanController.php b/app/Http/Controllers/User/PeminjamanController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/User/PengembalianController.php b/app/Http/Controllers/User/PengembalianController.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Controllers/User/TeknisiController.php b/app/Http/Controllers/User/TeknisiController.php
+index f211d6a..32eec30 100644
+--- a/app/Http/Controllers/User/TeknisiController.php
++++ b/app/Http/Controllers/User/TeknisiController.php
+@@ -17,39 +17,43 @@ public function index()
+     {
+         $userId = Auth::id();
+ 
+-        // 1. Antrean Terbuka (Belum diklaim siapapun)
++        // Antrean terbuka yang belum diklaim teknisi
+         $antrean_tersedia = LaporanKerusakan::with(['barang', 'user'])
+             ->where('status', 'disetujui')
+             ->whereNull('teknisi_id')
+             ->orderBy('updated_at', 'desc')
+             ->get();
+ 
+-        // 2. Tugas Saya (Sudah diklaim oleh teknisi yang login)
++        // Tugas yang sudah diklaim teknisi yang login
+         $tugas_saya = LaporanKerusakan::with(['barang', 'user'])
+             ->where('status', 'disetujui')
+             ->where('teknisi_id', $userId)
+             ->orderBy('updated_at', 'desc')
+             ->get();
+ 
+-        return view('user.teknisi.index', compact('antrean_tersedia', 'tugas_saya'));
++        return view(
++            'user.teknisi.index',
++            compact('antrean_tersedia', 'tugas_saya')
++        );
+     }
+ 
+     public function klaim($uuid)
+     {
+-        // Update langsung untuk mencegah Race Condition
+         $updated = LaporanKerusakan::where('uuid', $uuid)
+             ->where('status', 'disetujui')
+             ->whereNull('teknisi_id')
+             ->update([
+                 'teknisi_id' => Auth::id(),
+-                'updated_at' => now()
++                'updated_at' => now(),
+             ]);
+ 
+         if ($updated) {
+-            return redirect()->back()->with('success', 'Tugas berhasil diambil alih!');
++            return redirect()->back()
++                ->with('success', 'Tugas berhasil diambil alih!');
+         }
+ 
+-        return redirect()->back()->with('error', 'Maaf, tugas ini sudah diklaim oleh teknisi lain.');
++        return redirect()->back()
++            ->with('error', 'Maaf, tugas ini sudah diklaim oleh teknisi lain.');
+     }
+ 
+     public function batalKlaim($uuid)
+@@ -58,15 +62,18 @@ public function batalKlaim($uuid)
+             ->where('teknisi_id', Auth::id())
+             ->update([
+                 'teknisi_id' => null,
+-                'updated_at' => now()
++                'updated_at' => now(),
+             ]);
+ 
+-        return redirect()->back()->with('info', 'Tugas berhasil dikembalikan ke antrean.');
++        return redirect()->back()
++            ->with('info', 'Tugas berhasil dikembalikan ke antrean.');
+     }
+ 
++    /**
++     * Detail laporan kerusakan awal.
++     */
+     public function detail($uuid)
+     {
+-        // PERKETAT KEAMANAN: Pastikan hanya teknisi yang mengklaim yang bisa buka detail
+         $laporan = LaporanKerusakan::with(['barang', 'user'])
+             ->where('uuid', $uuid)
+             ->where('teknisi_id', Auth::id())
+@@ -79,7 +86,7 @@ public function perbaikan($uuid)
+     {
+         $laporan = LaporanKerusakan::with(['barang'])
+             ->where('uuid', $uuid)
+-            ->where('teknisi_id', Auth::id()) // Perketat juga di sini
++            ->where('teknisi_id', Auth::id())
+             ->firstOrFail();
+ 
+         return view('user.teknisi.perbaikan', compact('laporan'));
+@@ -87,103 +94,253 @@ public function perbaikan($uuid)
+ 
+     public function perbaikanSubmit(Request $request, $uuid)
+     {
++        // Validasi input dan unggahan bukti perbaikan
+         $request->validate([
+-            'deskripsi'        => 'required',
+-            'biaya'            => 'required|numeric',
+-            'status_perbaikan' => 'required|in:diperbaiki,tidak_dapat_diperbaiki',
+-            'foto_bukti'       => 'nullable|image|max:4096'
++            'deskripsi' => [
++                'required',
++                'string',
++            ],
++
++            'biaya' => [
++                'required',
++                'numeric',
++                'min:0',
++            ],
++
++            'status_perbaikan' => [
++                'required',
++                'in:diperbaiki,tidak_dapat_diperbaiki',
++            ],
++
++            // Foto opsional, maksimal 10 MB, hanya JPG/JPEG/PNG
++           'foto_bukti.file' =>
++    'File bukti yang diunggah tidak valid.',
++
++'foto_bukti.mimetypes' =>
++    'File bukti harus berupa gambar JPG, JPEG, atau PNG.',
++
++'foto_bukti.mimes' =>
++    'Format foto bukti harus JPG, JPEG, atau PNG.',
++
++'foto_bukti.max' =>
++    'Ukuran foto bukti maksimal 10 MB.',
++
++            // Dokumen opsional, maksimal 10 MB
++            'dokumen_bukti' => [
++                'nullable',
++                'file',
++                'mimes:pdf,doc,docx',
++                'max:10240',
++            ],
++        ], [
++            'deskripsi.required' =>
++                'Deskripsi tindakan perbaikan wajib diisi.',
++
++            'biaya.required' =>
++                'Biaya perbaikan wajib diisi.',
++
++            'biaya.numeric' =>
++                'Biaya perbaikan harus berupa angka.',
++
++            'biaya.min' =>
++                'Biaya perbaikan tidak boleh kurang dari 0.',
++
++            'status_perbaikan.required' =>
++                'Status perbaikan wajib dipilih.',
++
++            'status_perbaikan.in' =>
++                'Status perbaikan yang dipilih tidak valid.',
++
++            'foto_bukti.image' =>
++                'File foto bukti harus berupa gambar.',
++
++            'foto_bukti.mimes' =>
++                'Format foto bukti harus JPG, JPEG, atau PNG.',
++
++            'foto_bukti.max' =>
++                'Ukuran foto bukti maksimal 10 MB.',
++
++            'dokumen_bukti.file' =>
++                'Dokumen bukti yang diunggah tidak valid.',
++
++            'dokumen_bukti.mimes' =>
++                'Format dokumen bukti harus PDF, DOC, atau DOCX.',
++
++            'dokumen_bukti.max' =>
++                'Ukuran dokumen bukti maksimal 10 MB.',
+         ]);
+ 
+-        $laporan = LaporanKerusakan::where('uuid', $uuid)->firstOrFail();
++        $laporan = LaporanKerusakan::where('uuid', $uuid)
++            ->where('teknisi_id', Auth::id())
++            ->firstOrFail();
+ 
+         $fotoPath = null;
++
+         if ($request->hasFile('foto_bukti')) {
+-            $fotoPath = $request->file('foto_bukti')->store('perawatan/bukti', 'public');
++            $fotoPath = $request->file('foto_bukti')
++                ->store('perawatan/bukti', 'public');
++        }
++
++        $dokumenPath = null;
++
++        if ($request->hasFile('dokumen_bukti')) {
++            $dokumenPath = $request->file('dokumen_bukti')
++                ->store('perawatan/dokumen', 'public');
+         }
+ 
+         PerawatanInventaris::create([
+-            'uuid'              => Str::uuid(),
+-            'barang_id'         => $laporan->barang_id,
+-            'user_id'           => Auth::id(),
++            'uuid' => (string) Str::uuid(),
++            'barang_id' => $laporan->barang_id,
++            'user_id' => Auth::id(),
+             'tanggal_perawatan' => now(),
+-            'jenis_perawatan'   => 'perbaikan',
+-            'deskripsi'         => "Keluhan: " . $laporan->deskripsi . "\nTindakan Perbaikan: " . $request->deskripsi,
+-            'biaya'             => $request->biaya,
+-            'foto_bukti'        => $fotoPath,
+-            'foto_kerusakan'    => $laporan->foto,
+-            'status'            => $request->status_perbaikan // Menyimpan hasil radio button
++            'jenis_perawatan' => 'perbaikan',
++            'deskripsi' => "Keluhan: " . $laporan->deskripsi
++                . "\nTindakan Perbaikan: " . $request->deskripsi,
++            'biaya' => $request->biaya,
++            'foto_bukti' => $fotoPath,
++            'dokumen_bukti' => $dokumenPath,
++            'foto_kerusakan' => $laporan->foto,
++            'status' => $request->status_perbaikan,
+         ]);
+ 
+         $laporan->delete();
+ 
+-        return redirect()->route('user.teknisi.logbook')->with('success', 'Perbaikan berhasil! Data telah diserahkan ke Admin Perawatan Inventaris untuk verifikasi.');
++        return redirect()
++            ->route('user.teknisi.logbook')
++            ->with(
++                'success',
++                'Perbaikan berhasil! Data telah diserahkan ke Admin Perawatan Inventaris untuk verifikasi.'
++            );
+     }
+ 
++    /**
++     * Menampilkan riwayat pengerjaan teknisi.
++     */
+     public function logbook(Request $request)
+     {
+         $query = PerawatanInventaris::with(['barang'])
+             ->where('user_id', Auth::id())
+             ->where('jenis_perawatan', 'perbaikan')
+-            ->whereIn('status', ['proses', 'diperbaiki', 'tidak_dapat_diperbaiki', 'selesai']);
++            ->whereIn('status', [
++                'proses',
++                'diperbaiki',
++                'tidak_dapat_diperbaiki',
++                'selesai',
++            ]);
+ 
+         $periodeText = 'Semua Waktu';
+ 
+-        // Filter Per Bulan
+         if ($request->filled('filter_month')) {
+             $date = Carbon::parse($request->filter_month);
++
+             $query->whereYear('updated_at', $date->year)
+-                  ->whereMonth('updated_at', $date->month);
++                ->whereMonth('updated_at', $date->month);
++
+             $periodeText = 'Bulan ' . $date->translatedFormat('F Y');
+-        }
+-        // Filter Per Minggu (Format HTML5 Week: YYYY-Www, contoh: 2026-W10)
+-        elseif ($request->filled('filter_week')) {
++        } elseif ($request->filled('filter_week')) {
+             $year = substr($request->filter_week, 0, 4);
+             $week = substr($request->filter_week, 6);
+ 
+-            $start = Carbon::now()->setISODate($year, $week)->startOfWeek();
+-            $end = Carbon::now()->setISODate($year, $week)->endOfWeek();
++            $start = Carbon::now()
++                ->setISODate($year, $week)
++                ->startOfWeek();
++
++            $end = Carbon::now()
++                ->setISODate($year, $week)
++                ->endOfWeek();
+ 
+             $query->whereBetween('updated_at', [$start, $end]);
+-            $periodeText = 'Minggu ke-' . $week . ' Tahun ' . $year . ' (' . $start->format('d/m/Y') . ' - ' . $end->format('d/m/Y') . ')';
++
++            $periodeText = 'Minggu ke-' . $week
++                . ' Tahun ' . $year
++                . ' (' . $start->format('d/m/Y')
++                . ' - ' . $end->format('d/m/Y') . ')';
+         }
+ 
+-        $logbook = $query->orderBy('updated_at', 'desc')->paginate(9)->withQueryString();
++        $logbook = $query
++            ->orderBy('updated_at', 'desc')
++            ->paginate(9)
++            ->withQueryString();
++
++        return view(
++            'user.teknisi.logbook',
++            compact('logbook', 'periodeText')
++        );
++    }
++
++    /**
++     * Detail hasil pengerjaan dari logbook.
++     */
++    public function logbookDetail($uuid)
++    {
++        $perawatan = PerawatanInventaris::with(['barang'])
++            ->where('uuid', $uuid)
++            ->where('user_id', Auth::id())
++            ->where('jenis_perawatan', 'perbaikan')
++            ->firstOrFail();
+ 
+-        return view('user.teknisi.logbook', compact('logbook', 'periodeText'));
++        return view('user.teknisi.logbook-detail', compact('perawatan'));
+     }
+ 
++    /**
++     * Mengunduh laporan logbook dalam format PDF.
++     */
+     public function downloadPdf(Request $request)
+     {
+         $query = PerawatanInventaris::with(['barang'])
+             ->where('user_id', Auth::id())
+             ->where('jenis_perawatan', 'perbaikan')
+-            ->whereIn('status', ['proses', 'diperbaiki', 'tidak_dapat_diperbaiki', 'selesai']);
++            ->whereIn('status', [
++                'proses',
++                'diperbaiki',
++                'tidak_dapat_diperbaiki',
++                'selesai',
++            ]);
+ 
+         $periodeText = 'Semua Waktu';
+ 
+         if ($request->filled('filter_month')) {
+             $date = Carbon::parse($request->filter_month);
++
+             $query->whereYear('updated_at', $date->year)
+-                  ->whereMonth('updated_at', $date->month);
++                ->whereMonth('updated_at', $date->month);
++
+             $periodeText = 'Bulan ' . $date->translatedFormat('F Y');
+         } elseif ($request->filled('filter_week')) {
+             $year = substr($request->filter_week, 0, 4);
+             $week = substr($request->filter_week, 6);
+ 
+-            $start = Carbon::now()->setISODate($year, $week)->startOfWeek();
+-            $end = Carbon::now()->setISODate($year, $week)->endOfWeek();
++            $start = Carbon::now()
++                ->setISODate($year, $week)
++                ->startOfWeek();
++
++            $end = Carbon::now()
++                ->setISODate($year, $week)
++                ->endOfWeek();
+ 
+             $query->whereBetween('updated_at', [$start, $end]);
+-            $periodeText = 'Minggu ke-' . $week . ' Tahun ' . $year . ' (' . $start->format('d/m/Y') . ' - ' . $end->format('d/m/Y') . ')';
++
++            $periodeText = 'Minggu ke-' . $week
++                . ' Tahun ' . $year
++                . ' (' . $start->format('d/m/Y')
++                . ' - ' . $end->format('d/m/Y') . ')';
+         }
+ 
+-        $logbook = $query->orderBy('updated_at', 'desc')->get();
++        $logbook = $query
++            ->orderBy('updated_at', 'desc')
++            ->get();
++
++        $pdf = Pdf::loadView(
++            'user.teknisi.pdf_logbook',
++            compact('logbook', 'periodeText')
++        )->setPaper('a4', 'landscape');
+ 
+-        $pdf = Pdf::loadView('user.teknisi.pdf_logbook', compact('logbook', 'periodeText'))
+-                  ->setPaper('a4', 'landscape');
++        $namaTeknisi = Auth::user()->nama_lengkap ?? 'Teknisi';
+ 
+-        $namaFile = 'Laporan_Kinerja_Teknisi_' . str_replace(' ', '_', Auth::user()->nama_lengkap) . '_' . date('d-m-Y') . '.pdf';
++        $namaFile = 'Laporan_Kinerja_Teknisi_'
++            . str_replace(' ', '_', $namaTeknisi)
++            . '_' . date('d-m-Y') . '.pdf';
+ 
+         return $pdf->download($namaFile);
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/app/Http/Middleware/CheckJabatan.php b/app/Http/Middleware/CheckJabatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Middleware/CheckRole.php b/app/Http/Middleware/CheckRole.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Middleware/IsLogin.php b/app/Http/Middleware/IsLogin.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Middleware/VerifiedPassword.php b/app/Http/Middleware/VerifiedPassword.php
+old mode 100755
+new mode 100644
+diff --git a/app/Http/Requests/PerawatanInventarisRequest.php b/app/Http/Requests/PerawatanInventarisRequest.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Barang.php b/app/Models/Barang.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/BmnBarang.php b/app/Models/BmnBarang.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/BmnJenisKerusakan.php b/app/Models/BmnJenisKerusakan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/BmnKategori.php b/app/Models/BmnKategori.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/BmnRuangan.php b/app/Models/BmnRuangan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Catatan.php b/app/Models/Catatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/DetailPeminjaman.php b/app/Models/DetailPeminjaman.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/DetailPengembalian.php b/app/Models/DetailPengembalian.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/GuideBook.php b/app/Models/GuideBook.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Jabatan.php b/app/Models/Jabatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/JenisBarang.php b/app/Models/JenisBarang.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/LaporanKerusakan.php b/app/Models/LaporanKerusakan.php
+old mode 100755
+new mode 100644
+index 804239e..43a6b14
+--- a/app/Models/LaporanKerusakan.php
++++ b/app/Models/LaporanKerusakan.php
+@@ -18,14 +18,16 @@ class LaporanKerusakan extends Model
+         'jenis_kerusakan',
+         'deskripsi',
+         'foto',
++        'dokumen_bukti',
+         'status',
+     ];
+ 
+     protected static function boot()
+     {
+         parent::boot();
++
+         static::creating(function ($model) {
+-            $model->uuid = Str::uuid();
++            $model->uuid = (string) Str::uuid();
+         });
+     }
+ 
+@@ -39,7 +41,7 @@ public function user()
+         return $this->belongsTo(User::class, 'user_id');
+     }
+ 
+-    // Relasi baru ke teknisi
++    // Relasi ke teknisi
+     public function teknisi()
+     {
+         return $this->belongsTo(User::class, 'teknisi_id');
+diff --git a/app/Models/Log.php b/app/Models/Log.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Peminjaman.php b/app/Models/Peminjaman.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Pengembalian.php b/app/Models/Pengembalian.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Perawatan.php b/app/Models/Perawatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/PerawatanInventaris.php b/app/Models/PerawatanInventaris.php
+old mode 100755
+new mode 100644
+index e017242..81df418
+--- a/app/Models/PerawatanInventaris.php
++++ b/app/Models/PerawatanInventaris.php
+@@ -15,7 +15,7 @@ class PerawatanInventaris extends Model
+     protected $fillable = [
+         'uuid',
+         'barang_id',
+-        'user_id', // <-- WAJIB ditambahkan agar bisa menyimpan ID teknisi
++        'user_id',
+         'tanggal_perawatan',
+         'jenis_perawatan',
+         'deskripsi',
+@@ -23,15 +23,17 @@ class PerawatanInventaris extends Model
+         'biaya',
+         'foto_kerusakan',
+         'foto_bukti',
++        'dokumen_bukti',
+         'surat_penghapusan'
+     ];
+ 
+-    // Tambahkan ini agar UUID terisi otomatis
++    // UUID terisi otomatis saat data dibuat
+     protected static function boot()
+     {
+         parent::boot();
++
+         static::creating(function ($model) {
+-            $model->uuid = (string) Str::uuid(); // Gunakan (string) agar pasti bertipe string
++            $model->uuid = (string) Str::uuid();
+         });
+     }
+ 
+@@ -40,7 +42,7 @@ public function barang()
+         return $this->belongsTo(BmnBarang::class, 'barang_id');
+     }
+ 
+-    // RELASI BARU: Menghubungkan perawatan dengan Teknisi (User)
++    // Relasi perawatan dengan teknisi (User)
+     public function user()
+     {
+         return $this->belongsTo(User::class, 'user_id');
+diff --git a/app/Models/Peruntukan.php b/app/Models/Peruntukan.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/SliderImage.php b/app/Models/SliderImage.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/Surat.php b/app/Models/Surat.php
+old mode 100755
+new mode 100644
+diff --git a/app/Models/User.php b/app/Models/User.php
+old mode 100755
+new mode 100644
+diff --git a/app/Notifications/PeminjamanNotification.php b/app/Notifications/PeminjamanNotification.php
+old mode 100755
+new mode 100644
+diff --git a/app/Providers/AppServiceProvider.php b/app/Providers/AppServiceProvider.php
+old mode 100755
+new mode 100644
+index 4b5b39e..15ec289
+--- a/app/Providers/AppServiceProvider.php
++++ b/app/Providers/AppServiceProvider.php
+@@ -24,7 +24,9 @@ public function boot(): void
+     {
+         Model::preventLazyLoading();
+         Paginator::useTailwind();
+-        if (str_contains(request()->url(), 'ngrok-free.app')) {
++        
++        // Force HTTPS in production
++        if ($this->app->environment('production')) {
+             URL::forceScheme('https');
+         }
+     }
+diff --git a/app/View/Components/AuthValidation.php b/app/View/Components/AuthValidation.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/BadgeStatus.php b/app/View/Components/BadgeStatus.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/CreditModal.php b/app/View/Components/CreditModal.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/EmptyData.php b/app/View/Components/EmptyData.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/FilterUserByJabatan.php b/app/View/Components/FilterUserByJabatan.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/FilterUserByRole.php b/app/View/Components/FilterUserByRole.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/Forms/tinymceEditor.php b/app/View/Components/Forms/tinymceEditor.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/Head/tinymceConfig.php b/app/View/Components/Head/tinymceConfig.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/PeminjamProfile.php b/app/View/Components/PeminjamProfile.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/PeminjamanPopup.php b/app/View/Components/PeminjamanPopup.php
+old mode 100755
+new mode 100644
+diff --git a/app/View/Components/PengembalianPopup.php b/app/View/Components/PengembalianPopup.php
+old mode 100755
+new mode 100644
+diff --git a/config/app.php b/config/app.php
+old mode 100755
+new mode 100644
+diff --git a/config/auth.php b/config/auth.php
+old mode 100755
+new mode 100644
+diff --git a/config/cache.php b/config/cache.php
+old mode 100755
+new mode 100644
+diff --git a/config/database.php b/config/database.php
+old mode 100755
+new mode 100644
+diff --git a/config/dompdf.php b/config/dompdf.php
+old mode 100755
+new mode 100644
+diff --git a/config/filesystems.php b/config/filesystems.php
+old mode 100755
+new mode 100644
+diff --git a/config/laravel-to-uml.php b/config/laravel-to-uml.php
+old mode 100755
+new mode 100644
+diff --git a/config/laravolt/avatar.php b/config/laravolt/avatar.php
+old mode 100755
+new mode 100644
+diff --git a/config/logging.php b/config/logging.php
+old mode 100755
+new mode 100644
+diff --git a/config/mail.php b/config/mail.php
+old mode 100755
+new mode 100644
+diff --git a/config/notify.php b/config/notify.php
+old mode 100755
+new mode 100644
+diff --git a/config/queue.php b/config/queue.php
+old mode 100755
+new mode 100644
+diff --git a/config/services.php b/config/services.php
+old mode 100755
+new mode 100644
+diff --git a/config/session.php b/config/session.php
+old mode 100755
+new mode 100644
+diff --git a/database/.gitignore b/database/.gitignore
+old mode 100755
+new mode 100644
+diff --git a/database/esimprod.sql b/database/esimprod.sql
+old mode 100755
+new mode 100644
+diff --git a/database/factories/BarangFactory.php b/database/factories/BarangFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/factories/JabatanFactory.php b/database/factories/JabatanFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/factories/JenisBarangFactory.php b/database/factories/JenisBarangFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/factories/PeruntukanFactory.php b/database/factories/PeruntukanFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/factories/UserFactory.php b/database/factories/UserFactory.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/0000_11_17_120946_create_jabatan_table.php b/database/migrations/0000_11_17_120946_create_jabatan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/0001_01_01_000000_create_users_table.php b/database/migrations/0001_01_01_000000_create_users_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/0001_01_01_000001_create_cache_table.php b/database/migrations/0001_01_01_000001_create_cache_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/0001_01_01_000002_create_jobs_table.php b/database/migrations/0001_01_01_000002_create_jobs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_10_24_020418_create_jenis_barang_table.php b/database/migrations/2024_10_24_020418_create_jenis_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_10_24_020444_create_barang_table.php b/database/migrations/2024_10_24_020444_create_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_04_001540_create_peruntukan_table.php b/database/migrations/2024_11_04_001540_create_peruntukan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_04_002537_create_perawatan_table.php b/database/migrations/2024_11_04_002537_create_perawatan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_04_002636_create_peminjaman_table.php b/database/migrations/2024_11_04_002636_create_peminjaman_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_04_002709_create_pengembalian_table.php b/database/migrations/2024_11_04_002709_create_pengembalian_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_05_061543_create_detail_peminjaman_table.php b/database/migrations/2024_11_05_061543_create_detail_peminjaman_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_11_05_061552_create_detail_pengembalian_table.php b/database/migrations/2024_11_05_061552_create_detail_pengembalian_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_12_22_182303_create_log_table.php b/database/migrations/2024_12_22_182303_create_log_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2024_12_27_083246_create_catatan_table.php b/database/migrations/2024_12_27_083246_create_catatan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_01_20_134343_create_guidebook_table.php b/database/migrations/2025_01_20_134343_create_guidebook_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_06_130658_add_notes_to_schedules_table.php b/database/migrations/2025_10_06_130658_add_notes_to_schedules_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_041056_create_bmn_barangs_table.php b/database/migrations/2025_10_22_041056_create_bmn_barangs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_104929_add_studio_to_barang_table.php b/database/migrations/2025_10_22_104929_add_studio_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_110718_add_uuid_to_barang_table.php b/database/migrations/2025_10_22_110718_add_uuid_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_111639_modify_nomor_seri_nullable_on_barang_table.php b/database/migrations/2025_10_22_111639_modify_nomor_seri_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_112024_modify_merk_nullable_on_barang_table.php b/database/migrations/2025_10_22_112024_modify_merk_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_112500_modify_jenis_barang_nullable_on_barang_table.php b/database/migrations/2025_10_22_112500_modify_jenis_barang_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_113022_modify_qr_code_nullable_on_barang_table.php b/database/migrations/2025_10_22_113022_modify_qr_code_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_22_113236_modify_limit_nullable_on_barang_table.php b/database/migrations/2025_10_22_113236_modify_limit_nullable_on_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_23_095547_add_extra_fields_to_barang_table.php b/database/migrations/2025_10_23_095547_add_extra_fields_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_23_101256_add_fields_to_barang_table.php b/database/migrations/2025_10_23_101256_add_fields_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_23_101542_add_new_fields_to_barang_table.php b/database/migrations/2025_10_23_101542_add_new_fields_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_29_080354_add_pengadaan_fields_to_barang_table.php b/database/migrations/2025_10_29_080354_add_pengadaan_fields_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_29_083323_add_asal_pengadaan_to_barang_table.php b/database/migrations/2025_10_29_083323_add_asal_pengadaan_to_barang_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_30_123324_add_uuid_to_bmn_barangs_table.php b/database/migrations/2025_10_30_123324_add_uuid_to_bmn_barangs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_10_30_123727_add_qr_code_to_bmn_barangs_table.php b/database/migrations/2025_10_30_123727_add_qr_code_to_bmn_barangs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_11_18_165108_create_slider_images_table.php b/database/migrations/2025_11_18_165108_create_slider_images_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_11_20_120757_create_perawatan_inventaris_table.php b/database/migrations/2025_11_20_120757_create_perawatan_inventaris_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_11_26_142152_create_surat_table.php b/database/migrations/2025_11_26_142152_create_surat_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_27_155322_create_bmn_ruangans_table.php b/database/migrations/2025_12_27_155322_create_bmn_ruangans_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_27_155347_create_bmn_kategoris_table.php b/database/migrations/2025_12_27_155347_create_bmn_kategoris_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_27_172841_create_bmn_jenis_kerusakans_table.php b/database/migrations/2025_12_27_172841_create_bmn_jenis_kerusakans_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_28_122618_update_bmn_barangs_table.php b/database/migrations/2025_12_28_122618_update_bmn_barangs_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2025_12_30_222249_create_laporan_kerusakan_table.php b/database/migrations/2025_12_30_222249_create_laporan_kerusakan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2026_02_10_120307_add_user_id_to_laporan_kerusakan_table.php b/database/migrations/2026_02_10_120307_add_user_id_to_laporan_kerusakan_table.php
+old mode 100755
+new mode 100644
+diff --git a/database/migrations/2026_10_19_014618_add_dokumen_bukti_to_perawatan_inventaris_table.php b/database/migrations/2026_10_19_014618_add_dokumen_bukti_to_perawatan_inventaris_table.php
+new file mode 100644
+index 0000000..fe3680f
+--- /dev/null
++++ b/database/migrations/2026_10_19_014618_add_dokumen_bukti_to_perawatan_inventaris_table.php
+@@ -0,0 +1,23 @@
++
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('perawatan_inventaris', function (Blueprint $table) {
++            $table->string('dokumen_bukti')->nullable()->after('foto_bukti');
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('perawatan_inventaris', function (Blueprint $table) {
++            $table->dropColumn('dokumen_bukti');
++        });
++    }
++};
+diff --git a/database/migrations/2026_10_19_023818_add_dokumen_bukti_to_laporan_kerusakan_table.php b/database/migrations/2026_10_19_023818_add_dokumen_bukti_to_laporan_kerusakan_table.php
+new file mode 100644
+index 0000000..1136515
+--- /dev/null
++++ b/database/migrations/2026_10_19_023818_add_dokumen_bukti_to_laporan_kerusakan_table.php
+@@ -0,0 +1,23 @@
++
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('laporan_kerusakan', function (Blueprint $table) {
++            $table->string('dokumen_bukti')->nullable();
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('laporan_kerusakan', function (Blueprint $table) {
++            $table->dropColumn('dokumen_bukti');
++        });
++    }
++};
+diff --git a/database/seeders/BarangSeeder.php b/database/seeders/BarangSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/DatabaseSeeder.php b/database/seeders/DatabaseSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/JabatanSeeder.php b/database/seeders/JabatanSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/JenisBarangSeeder.php b/database/seeders/JenisBarangSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/PeruntukanSeeder.php b/database/seeders/PeruntukanSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/database/seeders/UserSeeder.php b/database/seeders/UserSeeder.php
+old mode 100755
+new mode 100644
+diff --git a/package-lock.json b/package-lock.json
+old mode 100755
+new mode 100644
+diff --git a/package.json b/package.json
+old mode 100755
+new mode 100644
+diff --git a/resources/css/app.css b/resources/css/app.css
+old mode 100755
+new mode 100644
+diff --git a/resources/js/app.js b/resources/js/app.js
+old mode 100755
+new mode 100644
+diff --git a/resources/js/bootstrap.js b/resources/js/bootstrap.js
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/barang_pdf.blade.php b/resources/views/admin/barang/barang_pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/create.blade.php b/resources/views/admin/barang/create.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/detail.blade.php b/resources/views/admin/barang/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/edit.blade.php b/resources/views/admin/barang/edit.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/export.blade.php b/resources/views/admin/barang/export.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/index.blade.php b/resources/views/admin/barang/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/index_bmn.blade.php b/resources/views/admin/barang/index_bmn.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/qrcode_pdf.blade.php b/resources/views/admin/barang/qrcode_pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/qrcode_rak_pdf.blade.php b/resources/views/admin/barang/qrcode_rak_pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/barang/qrcode_ruangan_pdf.blade.php b/resources/views/admin/barang/qrcode_ruangan_pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/create.blade.php b/resources/views/admin/bmn/create.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/edit.blade.php b/resources/views/admin/bmn/edit.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/index.blade.php b/resources/views/admin/bmn/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/jenis_kerusakan/index.blade.php b/resources/views/admin/bmn/jenis_kerusakan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/kategori/index.blade.php b/resources/views/admin/bmn/kategori/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/pdf.blade.php b/resources/views/admin/bmn/pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/print.blade.php b/resources/views/admin/bmn/print.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/print_filtered.blade.php b/resources/views/admin/bmn/print_filtered.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/ruangan/index.blade.php b/resources/views/admin/bmn/ruangan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/bmn/show.blade.php b/resources/views/admin/bmn/show.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/dashboard/index.blade.php b/resources/views/admin/dashboard/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/data_penghapusan/index.blade.php b/resources/views/admin/data_penghapusan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/data_penghapusan/pdf.blade.php b/resources/views/admin/data_penghapusan/pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/guidebook/index.blade.php b/resources/views/admin/guidebook/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/jabatan/index.blade.php b/resources/views/admin/jabatan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/jenis-barang/index.blade.php b/resources/views/admin/jenis-barang/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/laporan_kerusakan/detail.blade.php b/resources/views/admin/laporan_kerusakan/detail.blade.php
+old mode 100755
+new mode 100644
+index d8a1343..8a841c4
+--- a/resources/views/admin/laporan_kerusakan/detail.blade.php
++++ b/resources/views/admin/laporan_kerusakan/detail.blade.php
+@@ -1,117 +1,198 @@
++
+ @extends('layouts.admin.main')
+ 
+ @section('content')
+ <div class="p-8 bg-gray-50 min-h-screen">
+     <div class="max-w-4xl mx-auto">
++
++        {{-- Header --}}
+         <div class="flex items-center justify-between mb-8">
+             <div>
+-                <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Detail Laporan</h2>
+-                <p class="text-sm text-slate-500 mt-1">Informasi lengkap mengenai kerusakan aset barang.</p>
++                <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">
++                    Detail Laporan
++                </h2>
++                <p class="text-sm text-slate-500 mt-1">
++                    Informasi lengkap mengenai kerusakan aset barang.
++                </p>
+             </div>
+-            <a href="{{ route('admin.laporan-kerusakan.index') }}"
+-               class="group inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-full shadow-sm hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 hover:shadow-md transition-all duration-300 ease-out">
+-                <span class="transform transition-transform duration-300 group-hover:-translate-x-1">←</span>
+-                Kembali ke Daftar
++
++            <a href="{{ url()->previous() }}"
++               class="group inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-full shadow-sm hover:bg-slate-50 hover:text-slate-900 transition">
++                <span>←</span>
++                Kembali
+             </a>
+         </div>
+ 
+         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+             <div class="p-8">
++
++                {{-- Informasi dan foto --}}
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+ 
+                     <div class="space-y-6">
+-                      <div>
+-                          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Nama Barang</label>
+-                          <p class="text-lg font-medium text-slate-800">{{ $laporan->barang->nama_barang }}</p>
+-                      </div>
+-
+-                      <div>
+-                          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Tanggal Laporan</label>
+-                          <p class="text-sm font-medium text-slate-700">
+-                              <span class="flex items-center gap-1.5">
+-                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+-                                  </svg>
+-                                  {{ $laporan->created_at->translatedFormat('d F Y') }}
+-                                  <span class="text-slate-400 font-normal ml-1">({{ $laporan->created_at->format('H:i') }} WIB)</span>
+-                              </span>
+-                          </p>
+-                      </div>
+-                      <div>
+-                          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Jenis Kerusakan</label>
+-                          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-100">
+-                              {{ $laporan->jenis_kerusakan }}
+-                          </span>
+-                      </div>
+ 
+                         <div>
+-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Deskripsi Masalah</label>
+-                            <p class="text-slate-600 leading-relaxed text-sm bg-slate-50 p-4 rounded-xl border border-slate-100 italic">
+-                                "{{ $laporan->deskripsi }}"
++                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
++                                Nama Barang
++                            </label>
++                            <p class="text-lg font-medium text-slate-800">
++                                {{ $laporan->barang->nama_barang ?? 'Tidak diketahui' }}
+                             </p>
+                         </div>
+ 
+                         <div>
+-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Nama Pelapor</label>
++                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
++                                Tanggal Laporan
++                            </label>
++                            <p class="text-sm font-medium text-slate-700">
++                                {{ $laporan->created_at?->translatedFormat('d F Y') }}
++                                <span class="text-slate-400 font-normal">
++                                    ({{ $laporan->created_at?->format('H:i') }})
++                                </span>
++                            </p>
++                        </div>
++
++                        <div>
++                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
++                                Jenis Kerusakan
++                            </label>
++                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-100">
++                                {{ $laporan->jenis_kerusakan }}
++                            </span>
++                        </div>
++
++                        <div>
++                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
++                                Status Laporan
++                            </label>
++
++                            @if (strtolower($laporan->status) === 'ditolak')
++                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700">
++                                    Ditolak
++                                </span>
++                            @elseif (strtolower($laporan->status) === 'disetujui')
++                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
++                                    Disetujui
++                                </span>
++                            @else
++                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-amber-100 text-amber-700">
++                                    Menunggu Verifikasi
++                                </span>
++                            @endif
++                        </div>
++
++                        <div>
++                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
++                                Deskripsi Masalah
++                            </label>
++                            <p class="text-slate-600 leading-relaxed text-sm bg-slate-50 p-4 rounded-xl border border-slate-100">
++                                {{ $laporan->deskripsi }}
++                            </p>
++                        </div>
++
++                        <div>
++                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
++                                Nama Pelapor
++                            </label>
+                             <div class="flex items-center gap-2">
+-                                <div class="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-xs">
++                                <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                     {{ strtoupper(substr($laporan->user->nama_lengkap ?? 'A', 0, 1)) }}
+                                 </div>
+-                                <p class="text-sm font-medium text-slate-800">{{ $laporan->user->nama_lengkap ?? 'Tidak diketahui' }}</p>
++                                <p class="text-sm font-medium text-slate-800">
++                                    {{ $laporan->user->nama_lengkap ?? 'Tidak diketahui' }}
++                                </p>
+                             </div>
+                         </div>
++
+                     </div>
+ 
++                    {{-- Bukti Foto --}}
+                     <div class="flex flex-col items-center justify-center">
+-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 self-start">Bukti Foto</label>
++                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 self-start">
++                            Bukti Foto
++                        </label>
++
+                         @if ($laporan->foto)
+-                            <div class="group relative overflow-hidden rounded-2xl ring-1 ring-slate-200 transition-all hover:ring-indigo-300 shadow-sm w-full">
+-                                <img src="{{ asset('storage/'.$laporan->foto) }}"
+-                                     class="w-full h-64 object-cover transform transition-transform duration-700 group-hover:scale-110"
+-                                     alt="Foto Kerusakan">
+-                                <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
++                            <div class="overflow-hidden rounded-2xl ring-1 ring-slate-200 shadow-sm w-full">
++                                <img
++                                    src="{{ asset('storage/' . $laporan->foto) }}"
++                                    class="w-full h-64 object-cover"
++                                    alt="Foto Kerusakan">
+                             </div>
+                         @else
+                             <div class="w-full h-64 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
+-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+-                                </svg>
+-                                <p class="text-xs">Tidak ada foto terlampir</p>
++                                <p class="text-sm">Tidak ada foto terlampir</p>
+                             </div>
+                         @endif
+                     </div>
++
++                </div>
++
++                {{-- Dokumen Pendukung --}}
++                <div class="mt-8">
++                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
++                        Dokumen Pendukung
++                    </label>
++
++                    @if ($laporan->dokumen_bukti)
++                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-slate-50 border border-slate-200 rounded-xl">
++                            <div>
++                                <p class="text-sm font-semibold text-slate-800">
++                                    Dokumen Bukti Kerusakan
++                                </p>
++                                <p class="text-xs text-slate-500 mt-1">
++                                    Lampiran dari pelapor
++                                </p>
++                            </div>
++
++                            <a href="{{ asset('storage/' . $laporan->dokumen_bukti) }}"
++                               target="_blank"
++                               rel="noopener noreferrer"
++                               class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-100 transition">
++                                Lihat Dokumen
++                            </a>
++                        </div>
++                    @else
++                        <div class="p-5 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-sm text-slate-500">
++                            Tidak ada dokumen pendukung yang dilampirkan.
++                        </div>
++                    @endif
+                 </div>
+ 
+                 <hr class="my-8 border-slate-100">
+ 
+-                <div class="flex items-center justify-end gap-4">
++                {{-- Tombol tindakan hanya untuk laporan pending --}}
++                @if (strtolower($laporan->status) === 'pending')
++                    <div class="flex items-center justify-end gap-4">
+ 
+-                    <form action="{{ route('admin.laporan-kerusakan.tolak', $laporan->uuid) }}" method="POST">
+-                        @csrf
+-                        <button class="px-6 py-2.5 text-sm font-semibold text-rose-600 bg-white border border-rose-200 rounded-full shadow-sm hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-300 ease-out focus:ring-4 focus:ring-rose-100">
+-                            <span class="flex items-center gap-2">
+-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+-                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+-                                </svg>
++                        <form action="{{ route('admin.laporan-kerusakan.tolak', $laporan->uuid) }}"
++                              method="POST"
++                              onsubmit="return confirm('Yakin ingin menolak laporan ini?')">
++                            @csrf
++
++                            <button type="submit"
++                                class="px-6 py-2.5 text-sm font-semibold text-rose-600 bg-white border border-rose-200 rounded-full hover:bg-rose-50 transition">
+                                 Tolak Laporan
+-                            </span>
+-                        </button>
+-                    </form>
+-
+-                    <form action="{{ route('admin.laporan-kerusakan.setujui', $laporan->uuid) }}" method="POST">
+-                        @csrf
+-                        <button class="px-8 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-slate-800 to-slate-900 rounded-full shadow-lg shadow-slate-300 hover:from-emerald-500 hover:to-emerald-600 hover:shadow-emerald-300 hover:shadow-xl transform hover:-translate-y-0.5 hover:scale-105 transition-all duration-300 ease-out focus:ring-4 focus:ring-slate-200">
+-                            <span class="flex items-center gap-2">
+-                                Setujui & Proses
+-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+-                                </svg>
+-                            </span>
+-                        </button>
+-                    </form>
+-                </div>
+-                </div>
++                            </button>
++                        </form>
++
++                        <form action="{{ route('admin.laporan-kerusakan.setujui', $laporan->uuid) }}"
++                              method="POST"
++                              onsubmit="return confirm('Yakin ingin menyetujui laporan ini?')">
++                            @csrf
++
++                            <button type="submit"
++                                class="px-6 py-2.5 text-sm font-bold text-white bg-slate-800 rounded-full hover:bg-emerald-600 transition">
++                                Setujui &amp; Proses
++                            </button>
++                        </form>
++
++                    </div>
++                @endif
++
++            </div>
+         </div>
++
+     </div>
+ </div>
+ @endsection
+diff --git a/resources/views/admin/laporan_kerusakan/index.blade.php b/resources/views/admin/laporan_kerusakan/index.blade.php
+old mode 100755
+new mode 100644
+index 0737b70..2059f81
+--- a/resources/views/admin/laporan_kerusakan/index.blade.php
++++ b/resources/views/admin/laporan_kerusakan/index.blade.php
+@@ -3,94 +3,134 @@
+ @section('content')
+ 
+ <div class="px-6 py-6">
++
+     {{-- HEADER HALAMAN --}}
+     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+         <div>
+-            <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Laporan Kondisi Barang</h2>
+-            <p class="text-sm text-slate-500">Daftar permintaan perbaikan aset yang memerlukan persetujuan.</p>
++            <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">
++                Laporan Kondisi Barang
++            </h2>
++            <p class="text-sm text-slate-500">
++                Daftar permintaan perbaikan aset yang memerlukan persetujuan.
++            </p>
+         </div>
+ 
+-        {{-- TOMBOL CETAK PDF UTAMA --}}
+-        <a href="{{ route('admin.laporan-kerusakan.export-pdf') }}"
+-        target="_blank"
+-        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-xl shadow-md hover:bg-red-700 transition-all duration-200 ease-in-out transform hover:-translate-y-1">
+-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+-            </svg>
+-            Export PDF
+-        </a>
++        {{-- TOMBOL AKSI: EXPORT PDF DAN RIWAYAT DITOLAK --}}
++        <div class="flex items-center gap-3 flex-wrap">
++
++            {{-- TOMBOL EXPORT PDF --}}
++            <a href="{{ route('admin.laporan-kerusakan.export-pdf') }}"
++               target="_blank"
++               class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-xl shadow-md hover:bg-red-700 transition-all duration-200 ease-in-out transform hover:-translate-y-1">
++                <svg xmlns="http://www.w3.org/2000/svg"
++                     class="h-5 w-5"
++                     fill="none"
++                     viewBox="0 0 24 24"
++                     stroke="currentColor">
++                    <path stroke-linecap="round"
++                          stroke-linejoin="round"
++                          stroke-width="2"
++                          d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
++                </svg>
++                Export PDF
++            </a>
++
++            {{-- TOMBOL RIWAYAT DITOLAK --}}
++            <a href="{{ route('admin.laporan-kerusakan.riwayat-ditolak') }}"
++               style="background-color: #d97706 !important; color: #ffffff !important;"
++               class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl shadow-md hover:opacity-90 transition-all duration-200">
++                Riwayat Ditolak
++            </a>
++
++        </div>
+     </div>
+ 
+-    {{-- Jika tidak ada data --}}
++    {{-- JIKA TIDAK ADA DATA --}}
+     @if ($laporan->isEmpty())
+         <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-dashed border-gray-300">
+             <p class="text-gray-500">Belum ada Laporan.</p>
+         </div>
+     @endif
+ 
++    {{-- GRID KARTU LAPORAN --}}
+     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
++
+         @foreach ($laporan as $l)
+-    @php
+-        $statusColor = match ($l->status) {
+-            'pending' => 'bg-yellow-500',
+-            'disetujui' => 'bg-green-600',
+-            'ditolak' => 'bg-red-600',
+-            default => 'bg-gray-500',
+-        };
+-    @endphp
+-
+-    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 dark:bg-gray-800 dark:border-gray-700 overflow-hidden relative group">
+-
+-    {{-- FOTO BARANG --}}
+-    <div class="relative overflow-hidden">
+-        <img class="w-full h-44 object-cover transform transition-transform duration-500 group-hover:scale-110"
+-             src="{{ $l->barang->foto ? asset('storage/' . $l->barang->foto) : asset('img/no-image.png') }}"
+-             alt="{{ $l->barang->nama_barang }}">
+-
+-        {{-- STATUS OVERLAY - Gunakan warna yang lebih gelap agar teks putih terbaca --}}
+-        <div class="absolute top-3 left-3">
+-            <span class="inline-block bg-slate-900/80 backdrop-blur-md text-white text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md shadow-sm">
+-                {{ $l->barang->kategori }}
+-            </span>
+-        </div>
+-        <div class="absolute top-3 right-3">
+-            <span class="{{ $statusColor }} text-white text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md shadow-sm">
+-                {{ $l->status }}
+-            </span>
+-        </div>
+-    </div>
+ 
+-    <div class="p-4">
+-        <h3 class="font-bold text-gray-900 dark:text-white text-base truncate mb-1">
+-            {{ $l->barang->nama_barang }}
+-        </h3>
+-        <p class="text-[10px] text-slate-400 uppercase font-semibold mb-1">
+-            {{-- Ubah $l->user->name menjadi $l->user->nama_lengkap --}}
+-            Pelapor: <span class="text-slate-600 dark:text-slate-300">{{ $l->user->nama_lengkap ?? 'Anonim' }}</span>
+-        </p>
+-        <p class="text-xs text-red-500 font-medium mb-2 italic">
+-            ⚠ {{ $l->jenis_kerusakan }}
+-        </p>
+-        <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-4 h-8">
+-            {{ $l->deskripsi ?? 'Tidak ada deskripsi.' }}
+-        </p>
+-
+-        <div class="flex items-center">
+-            {{-- Tombol Detail - Gunakan warna biru tua yang standar jika custom hex gagal --}}
+-            <a href="{{ route('admin.laporan-kerusakan.detail', $l->uuid) }}"
+-               class="w-full block text-center bg-[#1b365d] hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-lg transition-all duration-200 shadow-sm">
+-                Detail Laporan
+-            </a>
+-        </div>
+-    </div>
+-</div>
+-@endforeach
++            @php
++                $statusColor = match ($l->status) {
++                    'pending' => 'bg-yellow-500',
++                    'disetujui' => 'bg-green-600',
++                    'ditolak' => 'bg-red-600',
++                    default => 'bg-gray-500',
++                };
++            @endphp
++
++            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-xl transition-shadow duration-300 dark:bg-gray-800 dark:border-gray-700 overflow-hidden relative group">
++
++                {{-- FOTO BARANG --}}
++                <div class="relative overflow-hidden">
++                    <img class="w-full h-44 object-cover transform transition-transform duration-500 group-hover:scale-110"
++                         src="{{ $l->barang && $l->barang->foto ? asset('storage/' . $l->barang->foto) : asset('img/no-image.png') }}"
++                         alt="{{ $l->barang->nama_barang ?? 'Barang' }}">
++
++                    {{-- KATEGORI BARANG --}}
++                    <div class="absolute top-3 left-3">
++                        <span class="inline-block bg-slate-900/80 backdrop-blur-md text-white text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md shadow-sm">
++                            {{ $l->barang->kategori ?? 'Tanpa Kategori' }}
++                        </span>
++                    </div>
++
++                    {{-- STATUS LAPORAN --}}
++                    <div class="absolute top-3 right-3">
++                        <span class="{{ $statusColor }} text-white text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-md shadow-sm">
++                            {{ $l->status }}
++                        </span>
++                    </div>
++                </div>
++
++                {{-- INFORMASI LAPORAN --}}
++                <div class="p-4">
++
++                    <h3 class="font-bold text-gray-900 dark:text-white text-base truncate mb-1">
++                        {{ $l->barang->nama_barang ?? 'Barang tidak ditemukan' }}
++                    </h3>
++
++                    <p class="text-[10px] text-slate-400 uppercase font-semibold mb-1">
++                        Pelapor:
++                        <span class="text-slate-600 dark:text-slate-300">
++                            {{ $l->user->nama_lengkap ?? 'Anonim' }}
++                        </span>
++                    </p>
++
++                    <p class="text-xs text-red-500 font-medium mb-2 italic">
++                        ⚠ {{ $l->jenis_kerusakan }}
++                    </p>
++
++                    <p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-4 h-8">
++                        {{ $l->deskripsi ?? 'Tidak ada deskripsi.' }}
++                    </p>
++
++                    {{-- TOMBOL DETAIL --}}
++                    <div class="flex items-center">
++                        <a href="{{ route('admin.laporan-kerusakan.detail', $l->uuid) }}"
++                           class="w-full block text-center bg-[#1b365d] hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-lg transition-all duration-200 shadow-sm">
++                            Detail Laporan
++                        </a>
++                    </div>
++
++                </div>
++            </div>
++
++        @endforeach
++
+     </div>
+ 
+-    {{-- Pagination --}}
++    {{-- PAGINATION --}}
+     <div class="mt-8">
+         {{ $laporan->links() }}
+     </div>
++
+ </div>
+ 
+-@endsection
++@endsection
+\ No newline at end of file
+diff --git a/resources/views/admin/laporan_kerusakan/pdf_rekap.blade.php b/resources/views/admin/laporan_kerusakan/pdf_rekap.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/laporan_kerusakan/riwayat_ditolak.blade.php b/resources/views/admin/laporan_kerusakan/riwayat_ditolak.blade.php
+new file mode 100644
+index 0000000..fc4103e
+--- /dev/null
++++ b/resources/views/admin/laporan_kerusakan/riwayat_ditolak.blade.php
+@@ -0,0 +1,149 @@
++@extends('layouts.admin.main')
++
++@section('content')
++<div class="px-6 py-6">
++
++    {{-- HEADER HALAMAN --}}
++    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
++        <div>
++            <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">
++                Riwayat Laporan Ditolak
++            </h2>
++            <p class="text-sm text-slate-500 mt-1">
++                Daftar laporan kerusakan aset yang telah ditolak oleh admin.
++            </p>
++        </div>
++
++        {{-- TOMBOL KEMBALI --}}
++        <a href="{{ route('admin.laporan-kerusakan.index') }}"
++           style="background-color: #334155; color: #ffffff;"
++           class="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl shadow-md hover:opacity-90 transition">
++            <svg xmlns="http://www.w3.org/2000/svg"
++                 class="w-5 h-5"
++                 fill="none"
++                 viewBox="0 0 24 24"
++                 stroke="currentColor">
++                <path stroke-linecap="round"
++                      stroke-linejoin="round"
++                      stroke-width="2"
++                      d="M10 19l-7-7m0 0l7-7m-7 7h18" />
++            </svg>
++            Kembali ke Laporan
++        </a>
++    </div>
++
++    {{-- JIKA BELUM ADA LAPORAN DITOLAK --}}
++    @if ($laporan->isEmpty())
++        <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-dashed border-gray-300">
++            <svg xmlns="http://www.w3.org/2000/svg"
++                 class="w-12 h-12 text-gray-400 mb-3"
++                 fill="none"
++                 viewBox="0 0 24 24"
++                 stroke="currentColor">
++                <path stroke-linecap="round"
++                      stroke-linejoin="round"
++                      stroke-width="1.5"
++                      d="M9 12l2 2 4-4m6 0a9 9 0 11-18 0 9 9 0 0118 0z" />
++            </svg>
++
++            <h3 class="text-lg font-semibold text-gray-700">
++                Belum Ada Laporan Ditolak
++            </h3>
++            <p class="text-sm text-gray-500 mt-1">
++                Laporan yang ditolak akan muncul di halaman ini.
++            </p>
++        </div>
++
++    @else
++
++        {{-- TABEL RIWAYAT PENOLAKAN --}}
++        <div class="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm">
++            <table class="w-full text-sm text-left text-gray-600">
++
++                <thead class="bg-gray-100 text-gray-700 uppercase text-xs">
++                    <tr>
++                        <th class="px-5 py-4">No.</th>
++                        <th class="px-5 py-4">Nama Barang</th>
++                        <th class="px-5 py-4">Pelapor</th>
++                        <th class="px-5 py-4">Jenis Kerusakan</th>
++                        <th class="px-5 py-4">Tanggal Pembaruan</th>
++                        <th class="px-5 py-4">Status</th>
++                        <th class="px-5 py-4 text-center">Aksi</th>
++                    </tr>
++                </thead>
++
++                <tbody>
++                    @foreach ($laporan as $item)
++                        <tr class="border-t border-gray-100 hover:bg-gray-50 transition">
++
++                            {{-- NOMOR --}}
++                            <td class="px-5 py-4">
++                                {{ $laporan->firstItem() + $loop->index }}
++                            </td>
++
++                            {{-- NAMA BARANG --}}
++                            <td class="px-5 py-4 font-medium text-gray-800">
++                                {{ $item->barang->nama_barang ?? 'Barang tidak ditemukan' }}
++                            </td>
++
++                            {{-- NAMA PELAPOR --}}
++                            <td class="px-5 py-4">
++                                {{ $item->user->nama_lengkap ?? 'Tidak diketahui' }}
++                            </td>
++
++                            {{-- JENIS KERUSAKAN --}}
++                            <td class="px-5 py-4">
++                                {{ $item->jenis_kerusakan ?? '-' }}
++                            </td>
++
++                            {{-- TANGGAL PEMBARUAN --}}
++                            <td class="px-5 py-4 whitespace-nowrap">
++                                {{ $item->updated_at?->format('d-m-Y H:i') ?? '-' }}
++                            </td>
++
++                            {{-- STATUS --}}
++                            <td class="px-5 py-4">
++                                <span style="background-color: #fee2e2; color: #b91c1c;"
++                                      class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold">
++                                    {{ ucfirst($item->status) }}
++                                </span>
++                            </td>
++
++                            {{-- AKSI DETAIL --}}
++                            <td class="px-5 py-4 text-center">
++                                <a href="{{ route('admin.laporan-kerusakan.detail', $item->uuid) }}"
++                                   class="inline-flex items-center justify-center gap-1 text-blue-600 hover:text-blue-800 hover:underline font-semibold">
++                                    <svg xmlns="http://www.w3.org/2000/svg"
++                                         class="w-4 h-4"
++                                         fill="none"
++                                         viewBox="0 0 24 24"
++                                         stroke="currentColor">
++                                        <path stroke-linecap="round"
++                                              stroke-linejoin="round"
++                                              stroke-width="2"
++                                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
++                                        <path stroke-linecap="round"
++                                              stroke-linejoin="round"
++                                              stroke-width="2"
++                                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
++                                    </svg>
++                                    Lihat Detail
++                                </a>
++                            </td>
++
++                        </tr>
++                    @endforeach
++                </tbody>
++
++            </table>
++        </div>
++
++        {{-- PAGINATION --}}
++        <div class="mt-6">
++            {{ $laporan->links() }}
++        </div>
++
++    @endif
++
++</div>
++@endsection
+\ No newline at end of file
+diff --git a/resources/views/admin/peminjaman/catatan.blade.php b/resources/views/admin/peminjaman/catatan.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/detail.blade.php b/resources/views/admin/peminjaman/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/index.blade.php b/resources/views/admin/peminjaman/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/laporan-bulanan.blade.php b/resources/views/admin/peminjaman/laporan-bulanan.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/pdf-laporan-bulanan.blade.php b/resources/views/admin/peminjaman/pdf-laporan-bulanan.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/peminjaman/pdf.blade.php b/resources/views/admin/peminjaman/pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/pengembalian/cetak.blade.php b/resources/views/admin/pengembalian/cetak.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/pengembalian/detail.blade.php b/resources/views/admin/pengembalian/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/pengembalian/index.blade.php b/resources/views/admin/pengembalian/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/perawatan_inventaris/detail.blade.php b/resources/views/admin/perawatan_inventaris/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/perawatan_inventaris/index.blade.php b/resources/views/admin/perawatan_inventaris/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/perawatan_inventaris/perbaiki.blade.php b/resources/views/admin/perawatan_inventaris/perbaiki.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/perawatan_inventaris/selesai.blade.php b/resources/views/admin/perawatan_inventaris/selesai.blade.php
+new file mode 100644
+index 0000000..19b3de9
+--- /dev/null
++++ b/resources/views/admin/perawatan_inventaris/selesai.blade.php
+@@ -0,0 +1,160 @@
++@extends('layouts.admin.main')
++
++@section('content')
++<div class="max-w-3xl mx-auto animate-fade-in">
++
++    {{-- Card --}}
++    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm
++                border border-gray-100 dark:border-gray-700
++                transition-all duration-300 hover:shadow-md">
++
++        {{-- Header --}}
++        <div class="px-6 py-5 bg-[#1b365d] rounded-t-xl border-b border-white/10">
++            <h2 class="flex items-center gap-2 text-lg font-semibold text-white">
++                {{-- Heroicon: Wrench --}}
++                <svg class="w-5 h-5 text-blue-200" fill="none" stroke="currentColor" stroke-width="1.8"
++                    viewBox="0 0 24 24">
++                    <path stroke-linecap="round" stroke-linejoin="round"
++                        d="M14.7 6.3a1 1 0 010 1.4l-8.6 8.6a2 2 0 01-2.8 0l-.6-.6a2 2 0 010-2.8l8.6-8.6a1 1 0 011.4 0z"/>
++                </svg>
++                Selesaikan Perbaikan
++            </h2>
++            <p class="text-sm text-blue-100/80 mt-1">
++                Lengkapi data perbaikan sebelum menyelesaikan proses
++            </p>
++        </div>
++
++        {{-- Content --}}
++        <div class="p-6 space-y-6">
++
++            {{-- Info Barang --}}
++            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
++                <div class="flex items-start gap-2">
++                    {{-- Icon --}}
++                    <svg class="w-4 h-4 mt-1 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8"
++                         viewBox="0 0 24 24">
++                        <path stroke-linecap="round" stroke-linejoin="round"
++                              d="M3 7h18M3 12h18M3 17h18"/>
++                    </svg>
++                    <div>
++                        <p class="text-gray-500 dark:text-gray-400">Nama Barang</p>
++                        <p class="font-medium text-gray-800 dark:text-gray-100">
++                            {{ $data->barang->nama_barang }}
++                        </p>
++                    </div>
++                </div>
++
++                <div class="flex items-start gap-2">
++                    {{-- Icon --}}
++                    <svg class="w-4 h-4 mt-1 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8"
++                         viewBox="0 0 24 24">
++                        <path stroke-linecap="round" stroke-linejoin="round"
++                              d="M8 7V3m8 4V3M3 11h18"/>
++                    </svg>
++                    <div>
++                        <p class="text-gray-500 dark:text-gray-400">Tanggal Perawatan</p>
++                        <p class="font-medium text-gray-800 dark:text-gray-100">
++                            {{ $data->tanggal_perawatan }}
++                        </p>
++                    </div>
++                </div>
++            </div>
++
++            {{-- Form --}}
++            <form action="{{ route('perawatan_inventaris.selesaiSubmit', $data->id) }}"
++                  method="POST" enctype="multipart/form-data"
++                  class="space-y-5">
++                @csrf
++
++                {{-- Deskripsi --}}
++                <div class="group">
++                    <label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
++                        <svg class="w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition"
++                             fill="none" stroke="currentColor" stroke-width="1.8"
++                             viewBox="0 0 24 24">
++                            <path stroke-linecap="round" stroke-linejoin="round"
++                                  d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
++                        </svg>
++                        Deskripsi Perbaikan
++                    </label>
++                    <textarea name="deskripsi" rows="4" required
++                        class="w-full rounded-lg border border-gray-300 dark:border-gray-600 
++                               bg-gray-50 dark:bg-gray-700 
++                               text-gray-800 dark:text-gray-100
++                               focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
++                               transition text-sm p-3">{{ old('deskripsi') }}</textarea>
++                </div>
++
++                {{-- Biaya --}}
++                <div class="group">
++                    <label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
++                        <svg class="w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition"
++                             fill="none" stroke="currentColor" stroke-width="1.8"
++                             viewBox="0 0 24 24">
++                            <path stroke-linecap="round" stroke-linejoin="round"
++                                  d="M12 8c-1.1 0-2 .9-2 2s.9 2 2 2 2 .9 2 2-.9 2-2 2m0-10v1m0 10v1"/>
++                        </svg>
++                        Biaya Perbaikan
++                    </label>
++                    <input type="number" name="biaya" required
++                        class="w-full rounded-lg border border-gray-300 dark:border-gray-600 
++                               bg-gray-50 dark:bg-gray-700 
++                               text-gray-800 dark:text-gray-100
++                               focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
++                               transition text-sm p-3">
++                </div>
++
++                {{-- Foto --}}
++                <div>
++                    <label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
++                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.8"
++                             viewBox="0 0 24 24">
++                            <path stroke-linecap="round" stroke-linejoin="round"
++                                  d="M3 7h18M5 7l2-3h10l2 3"/>
++                        </svg>
++                        Foto Bukti <span class="text-gray-400">(Opsional)</span>
++                    </label>
++                    <input type="file" name="foto_bukti"
++                        class="w-full text-sm text-gray-600 dark:text-gray-300
++                               file:mr-4 file:py-2 file:px-4
++                               file:rounded-lg file:border-0
++                               file:bg-gray-100 file:text-gray-700
++                               hover:file:bg-gray-200 transition
++                               dark:file:bg-gray-600 dark:file:text-gray-200">
++                </div>
++
++                {{-- Action --}}
++                <div class="flex justify-between items-center pt-6 border-t border-gray-100 dark:border-gray-700">
++                    <a href="{{ route('perawatan_inventaris.index') }}"
++                        class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium
++                               text-gray-600 dark:text-gray-300
++                               hover:bg-gray-100 dark:hover:bg-gray-700
++                               transition hover:-translate-x-0.5">
++                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8"
++                             viewBox="0 0 24 24">
++                            <path stroke-linecap="round" stroke-linejoin="round"
++                                  d="M15 19l-7-7 7-7"/>
++                        </svg>
++                        Kembali
++                    </a>
++
++                    <button type="submit"
++                        class="flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-semibold
++                               bg-emerald-600 hover:bg-emerald-700
++                               text-black transition
++                               hover:-translate-y-0.5 shadow-sm hover:shadow-md">
++                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8"
++                             viewBox="0 0 24 24">
++                            <path stroke-linecap="round" stroke-linejoin="round"
++                                  d="M5 13l4 4L19 7"/>
++                        </svg>
++                        Simpan & Selesaikan
++                
++                    </button>
++                </div>
++
++            </form>
++        </div>
++    </div>
++</div>
++@endsection
+diff --git a/resources/views/admin/peruntukan/index.blade.php b/resources/views/admin/peruntukan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/profile/index.blade.php b/resources/views/admin/profile/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/rencana_penghapusan/index.blade.php b/resources/views/admin/rencana_penghapusan/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/rencana_penghapusan/pdf.blade.php b/resources/views/admin/rencana_penghapusan/pdf.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/slider/index.blade.php b/resources/views/admin/slider/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/create.blade.php b/resources/views/admin/studio2/create.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/detail.blade.php b/resources/views/admin/studio2/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/edit.blade.php b/resources/views/admin/studio2/edit.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/index.blade.php b/resources/views/admin/studio2/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/studio2/print.blade.php b/resources/views/admin/studio2/print.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/create.blade.php b/resources/views/admin/user/create.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/detail.blade.php b/resources/views/admin/user/detail.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/edit.blade.php b/resources/views/admin/user/edit.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/id-card.blade.php b/resources/views/admin/user/id-card.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/index.blade.php b/resources/views/admin/user/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/admin/user/log.blade.php b/resources/views/admin/user/log.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/auth/forgot-password.blade.php b/resources/views/auth/forgot-password.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/auth/index.blade.php b/resources/views/auth/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/auth/password-adm.blade.php b/resources/views/auth/password-adm.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/auth/reset-password.blade.php b/resources/views/auth/reset-password.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/auth/template.blade.php b/resources/views/auth/template.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/auth-validation.blade.php b/resources/views/components/auth-validation.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/badge-status.blade.php b/resources/views/components/badge-status.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/credit-modal.blade.php b/resources/views/components/credit-modal.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/empty-data.blade.php b/resources/views/components/empty-data.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/filter-user-by-jabatan.blade.php b/resources/views/components/filter-user-by-jabatan.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/filter-user-by-role.blade.php b/resources/views/components/filter-user-by-role.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/head/tinymce-config.blade.php b/resources/views/components/head/tinymce-config.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/modal-delete.blade.php b/resources/views/components/modal-delete.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/components/peminjam-profile.blade.php b/resources/views/components/peminjam-profile.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/401.blade.php b/resources/views/errors/401.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/402.blade.php b/resources/views/errors/402.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/403.blade.php b/resources/views/errors/403.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/404.blade.php b/resources/views/errors/404.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/419.blade.php b/resources/views/errors/419.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/429.blade.php b/resources/views/errors/429.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/500.blade.php b/resources/views/errors/500.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/503.blade.php b/resources/views/errors/503.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/errors/minimal.blade.php b/resources/views/errors/minimal.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/admin/main.blade.php b/resources/views/layouts/admin/main.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/admin/partials/breadcrumb.blade.php b/resources/views/layouts/admin/partials/breadcrumb.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/admin/partials/navbar.blade.php b/resources/views/layouts/admin/partials/navbar.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/admin/partials/sidebar.blade.php b/resources/views/layouts/admin/partials/sidebar.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/admin/partials/validation.blade.php b/resources/views/layouts/admin/partials/validation.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/user/main.blade.php b/resources/views/layouts/user/main.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/user/partials/footer.blade.php b/resources/views/layouts/user/partials/footer.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/layouts/user/partials/navbar.blade.php b/resources/views/layouts/user/partials/navbar.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/qr_all.blade.php b/resources/views/qr_all.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/inventaris.blade.php b/resources/views/user/inventaris.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/inventaris/detail.blade.php b/resources/views/user/inventaris/detail.blade.php
+old mode 100755
+new mode 100644
+index 10cfada..fb64047
+--- a/resources/views/user/inventaris/detail.blade.php
++++ b/resources/views/user/inventaris/detail.blade.php
+@@ -77,12 +77,49 @@
+         $sedang_maintenance = $cek_perawatan || $cek_laporan;
+     @endphp
+ 
+-    @if (session('success'))
+-    <div class="animate-reveal p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 shadow-sm mb-8">
+-        <span class="material-symbols-outlined text-emerald-500">verified</span>
+-        <p class="text-sm font-semibold">{{ session('success') }}</p>
++@if (session('success'))
++    <div id="success-notification"
++         class="fixed top-6 right-6 z-[9999] max-w-md rounded-xl border border-green-200 bg-white px-5 py-4 shadow-xl"
++         role="alert">
++        <div class="flex items-center gap-3">
++            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
++                <span class="material-symbols-outlined">check_circle</span>
++            </div>
++
++            <div>
++                <p class="font-bold text-green-700">Berhasil!</p>
++                <p class="text-sm text-slate-600">
++                    {{ session('success') }}
++                </p>
++            </div>
++        </div>
+     </div>
+-    @endif
++
++    <script>
++        document.addEventListener('DOMContentLoaded', function () {
++            const notification = document.getElementById('success-notification');
++
++            if (notification) {
++                setTimeout(function () {
++                    notification.style.transition = 'opacity 0.4s ease';
++                    notification.style.opacity = '0';
++
++                    setTimeout(function () {
++                        notification.remove();
++                    }, 400);
++                }, 4000);
++            }
++        });
++    </script>
++@endif
++
++@if (session('error'))
++    <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
++        <p class="text-sm font-semibold">
++            {{ session('error') }}
++        </p>
++    </div>
++@endif
+ 
+     {{-- Alert Banner untuk Penghapusan --}}
+     @if($isRencanaPenghapusan)
+diff --git a/resources/views/user/inventaris/hasil_scan_rak.blade.php b/resources/views/user/inventaris/hasil_scan_rak.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/inventaris/lapor_kerusakan.blade.php b/resources/views/user/inventaris/lapor_kerusakan.blade.php
+old mode 100755
+new mode 100644
+index fdba128..32a48da
+--- a/resources/views/user/inventaris/lapor_kerusakan.blade.php
++++ b/resources/views/user/inventaris/lapor_kerusakan.blade.php
+@@ -204,7 +204,7 @@ class="font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-5
+                                 </div>
+ 
+                                 <p class="text-xs text-slate-400 dark:text-slate-500">
+-                                    PNG, JPG up to 10MB
++                                    PNG, JPG, up to 4MB
+                                 </p>
+ 
+                                 <p id="file-name"
+@@ -212,11 +212,42 @@ class="text-sm font-medium text-primary-600 dark:text-primary-400 mt-2 h-5 trans
+                                 </p>
+                             </div>
+ 
+-                            <input id="file-upload" name="foto" {{-- UBAH DARI 'file-upload' MENJADI 'foto' --}} type="file"
++                            <input id="file-upload" name="foto" {{-- UBAH DARI 'file-upload' MENJADI 'foto' --}} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                                 class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                 onchange="const name = this.files[0]?.name; document.getElementById('file-name').textContent = name ? 'Selected: ' + name : '';" />
+                         </div>
+                     </div>
++                    @error('foto')
++    <p class="mt-2 text-sm font-medium text-red-600" role="alert">
++        {{ $message }}
++    </p>
++@enderror
++                    
++{{-- Dokumen Pendukung Kerusakan --}}
++<div class="mt-6">
++    <label class="block text-xs font-semibold text-slate-700 mb-2">
++        Dokumen Pendukung
++    </label>
++
++    <div class="border-2 border-dashed border-slate-300 rounded-xl p-5 bg-white text-center">
++            <input
++                type="file"
++                id="dokumen_bukti"
++                name="dokumen_bukti"
++                accept=".pdf,.doc,.docx"
++                class="block w-full mt-3 text-sm text-slate-600"
++            >
++        </label>
++
++        <p class="text-xs text-slate-500 mt-2">
++            PDF, DOC, atau DOCX up to 10MB
++        </p>
++
++        <p id="dokumen-name-display"
++           class="text-xs text-blue-900 mt-2 break-all"></p>
++    </div>
++</div>
++
+                     <div class="pt-2 flex flex-col-reverse sm:flex-row gap-3">
+                         <a class="w-full sm:w-auto px-6 py-3 border border-slate-300 dark:border-slate-600 shadow-sm text-sm font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all text-center"
+                             href="{{ url()->previous() }}">
+diff --git a/resources/views/user/inventaris/show_all.blade.php b/resources/views/user/inventaris/show_all.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/laporan/peminjaman/index.blade.php b/resources/views/user/laporan/peminjaman/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/laporan/peminjaman/report.blade.php b/resources/views/user/laporan/peminjaman/report.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/laporan/pengembalian/index.blade.php b/resources/views/user/laporan/pengembalian/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/laporan/pengembalian/report.blade.php b/resources/views/user/laporan/pengembalian/report.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/options.blade.php b/resources/views/user/options.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/peminjaman/index.blade.php b/resources/views/user/peminjaman/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/pengembalian/index.blade.php b/resources/views/user/pengembalian/index.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/profil.blade.php b/resources/views/user/profil.blade.php
+old mode 100755
+new mode 100644
+diff --git a/resources/views/user/teknisi/logbook-detail.blade.php b/resources/views/user/teknisi/logbook-detail.blade.php
+new file mode 100644
+index 0000000..ad8056f
+--- /dev/null
++++ b/resources/views/user/teknisi/logbook-detail.blade.php
+@@ -0,0 +1,253 @@
++
++<!DOCTYPE html>
++<html lang="id">
++<head>
++    <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
++    <title>Detail Pengerjaan | Logbook Teknisi</title>
++
++    <style>
++        * {
++            box-sizing: border-box;
++        }
++
++        body {
++            margin: 0;
++            padding: 30px 16px;
++            font-family: Arial, sans-serif;
++            background: #f3f6fb;
++            color: #1f2937;
++        }
++
++        .container {
++            max-width: 850px;
++            margin: auto;
++        }
++
++        .header, .section {
++            background: #fff;
++            padding: 24px;
++            border-radius: 12px;
++            margin-bottom: 20px;
++            box-shadow: 0 3px 12px rgba(0, 0, 0, .05);
++        }
++
++        h1 {
++            font-size: 25px;
++            margin: 0 0 8px;
++        }
++
++        h2 {
++            font-size: 18px;
++            margin-top: 0;
++        }
++
++        .muted {
++            color: #6b7280;
++            font-size: 14px;
++        }
++
++        .row {
++            display: grid;
++            grid-template-columns: 190px 1fr;
++            gap: 12px;
++            padding: 13px 0;
++            border-bottom: 1px solid #e5e7eb;
++        }
++
++        .row:last-child {
++            border-bottom: none;
++        }
++
++        .label {
++            color: #6b7280;
++        }
++
++        .value {
++            overflow-wrap: anywhere;
++            white-space: pre-line;
++        }
++
++        .status {
++            display: inline-block;
++            padding: 7px 12px;
++            border-radius: 20px;
++            background: #e0f2fe;
++            color: #075985;
++            font-size: 13px;
++            font-weight: bold;
++        }
++
++        .evidence {
++            max-width: 100%;
++            max-height: 400px;
++            border-radius: 8px;
++            margin-top: 10px;
++        }
++
++        .button {
++            display: inline-block;
++            padding: 11px 18px;
++            border-radius: 8px;
++            background: #374151;
++            color: #fff;
++            text-decoration: none;
++        }
++
++        .file-link {
++            display: inline-block;
++            margin-top: 8px;
++            color: #2563eb;
++            overflow-wrap: anywhere;
++        }
++
++        @media (max-width: 600px) {
++            .row {
++                grid-template-columns: 1fr;
++                gap: 6px;
++            }
++
++            .header, .section {
++                padding: 18px;
++            }
++        }
++    </style>
++</head>
++
++<body>
++<div class="container">
++
++    <div class="header">
++        <h1>Detail Pengerjaan</h1>
++        <p class="muted">
++            Rincian hasil pekerjaan perbaikan barang inventaris.
++        </p>
++
++        <a href="{{ route('user.teknisi.logbook') }}" class="button">
++            Kembali ke Logbook
++        </a>
++    </div>
++
++    <div class="section">
++        <h2>Informasi Barang</h2>
++
++        <div class="row">
++            <div class="label">Nama Barang</div>
++            <div class="value">
++                {{ $perawatan->barang->nama_barang ?? '-' }}
++            </div>
++        </div>
++
++        <div class="row">
++            <div class="label">Tanggal Pengerjaan</div>
++            <div class="value">
++                {{ $perawatan->tanggal_perawatan
++                    ? \Carbon\Carbon::parse($perawatan->tanggal_perawatan)->format('d/m/Y H:i')
++                    : $perawatan->created_at?->format('d/m/Y H:i') ?? '-' }}
++            </div>
++        </div>
++
++        <div class="row">
++            <div class="label">Jenis Perawatan</div>
++            <div class="value">
++                {{ ucfirst($perawatan->jenis_perawatan ?? '-') }}
++            </div>
++        </div>
++    </div>
++
++    <div class="section">
++        <h2>Rincian Pengerjaan</h2>
++
++        <div class="row">
++            <div class="label">Keluhan Awal</div>
++            <div class="value">{{ \Illuminate\Support\Str::after(
++                $perawatan->deskripsi ?? '',
++                'Keluhan: '
++            ) }}</div>
++        </div>
++
++        <div class="row">
++            <div class="label">Deskripsi Pengerjaan</div>
++            <div class="value">{{ str_contains($perawatan->deskripsi ?? '', 'Tindakan Perbaikan:')
++                ? trim(\Illuminate\Support\Str::after(
++                    $perawatan->deskripsi,
++                    'Tindakan Perbaikan:'
++                ))
++                : ($perawatan->deskripsi ?? '-') }}</div>
++        </div>
++
++        <div class="row">
++            <div class="label">Biaya Perbaikan</div>
++            <div class="value">
++                Rp {{ number_format((float) $perawatan->biaya, 0, ',', '.') }}
++            </div>
++        </div>
++
++        <div class="row">
++            <div class="label">Status Perbaikan</div>
++            <div class="value">
++                <span class="status">
++                    {{ ucfirst(str_replace('_', ' ', $perawatan->status ?? '-')) }}
++                </span>
++            </div>
++        </div>
++    </div>
++
++    <div class="section">
++        <h2>Bukti Pengerjaan</h2>
++
++        <div class="row">
++            <div class="label">Foto Kerusakan Awal</div>
++            <div class="value">
++                @if ($perawatan->foto_kerusakan)
++                    <a href="{{ asset('storage/' . $perawatan->foto_kerusakan) }}"
++                       target="_blank" rel="noopener">
++                        Lihat Foto Kerusakan
++                    </a>
++                    <br>
++                    <img class="evidence"
++                         src="{{ asset('storage/' . $perawatan->foto_kerusakan) }}"
++                         alt="Foto kerusakan awal">
++                @else
++                    Belum ada foto kerusakan.
++                @endif
++            </div>
++        </div>
++
++        <div class="row">
++            <div class="label">Foto Bukti Pengerjaan</div>
++            <div class="value">
++                @if ($perawatan->foto_bukti)
++                    <a href="{{ asset('storage/' . $perawatan->foto_bukti) }}"
++                       target="_blank" rel="noopener">
++                        Lihat Foto Bukti
++                    </a>
++                    <br>
++                    <img class="evidence"
++                         src="{{ asset('storage/' . $perawatan->foto_bukti) }}"
++                         alt="Foto bukti pengerjaan">
++                @else
++                    Belum ada foto bukti pengerjaan.
++                @endif
++            </div>
++        </div>
++
++        <div class="row">
++            <div class="label">Dokumen Bukti</div>
++            <div class="value">
++                @if ($perawatan->dokumen_bukti)
++                    <a class="file-link"
++                       href="{{ asset('storage/' . $perawatan->dokumen_bukti) }}"
++                       target="_blank" rel="noopener">
++                        Buka atau unduh dokumen bukti
++                    </a>
++                @else
++                    Belum ada dokumen bukti.
++                @endif
++            </div>
++        </div>
++    </div>
++
++</div>
++</body>
++</html>
+diff --git a/resources/views/user/teknisi/logbook.blade.php b/resources/views/user/teknisi/logbook.blade.php
+index e8a412f..401e74a 100644
+--- a/resources/views/user/teknisi/logbook.blade.php
++++ b/resources/views/user/teknisi/logbook.blade.php
+@@ -197,7 +197,6 @@
+       @else
+         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+           @foreach ($logbook as $index => $l)
+-
+           @php
+               // Logika Pewarnaan Badge & Ikon berdasarkan Status
+               $badgeBg = 'bg-slate-50 border-slate-200 text-slate-700';
+@@ -245,19 +244,46 @@
+                 </p>
+               </div>
+             </div>
++<div class="px-5 pb-5 flex-1">
++    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 min-h-[4.5rem] relative">
++        <svg xmlns="http://www.w3.org/2000/svg"
++             class="h-4 w-4 text-slate-300 absolute top-2.5 left-2"
++             fill="none"
++             viewBox="0 0 24 24"
++             stroke="currentColor">
++            <path stroke-linecap="round"
++                  stroke-linejoin="round"
++                  stroke-width="2"
++                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
++        </svg>
++
++        <p class="text-[11px] text-slate-600 font-medium pl-6 leading-relaxed line-clamp-2 mt-0.5"
++           title="{{ $l->deskripsi }}">
++            {{ $l->deskripsi }}
++        </p>
++    </div>
+ 
+-            <div class="px-5 pb-5 flex-1">
+-              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 h-[4.5rem] relative">
+-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-300 absolute top-2.5 left-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+-                </svg>
+-                <p class="text-[11px] text-slate-600 font-medium pl-6 leading-relaxed line-clamp-2 mt-0.5" title="{{ $l->deskripsi }}">
+-                  {{ $l->deskripsi }}
+-                </p>
+-              </div>
+-            </div>
+-          </div>
+-          @endforeach
++    <a href="{{ route('user.teknisi.logbook.detail', $l->uuid) }}"
++       class="btn-premium mt-4 w-full px-4 py-3 text-sm font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-md">
++        <svg xmlns="http://www.w3.org/2000/svg"
++             class="h-5 w-5"
++             fill="none"
++             viewBox="0 0 24 24"
++             stroke="currentColor">
++            <path stroke-linecap="round"
++                  stroke-linejoin="round"
++                  stroke-width="2"
++                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
++            <path stroke-linecap="round"
++                  stroke-linejoin="round"
++                  stroke-width="2"
++                  d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
++        </svg>
++        Detail Pengerjaan
++    </a>
++</div>
++</div>
++@endforeach
+         </div>
+ 
+         <div class="mt-8 flex justify-center">
+diff --git a/resources/views/user/teknisi/perbaikan.blade.php b/resources/views/user/teknisi/perbaikan.blade.php
+index e0ae9c7..b5c5db0 100644
+--- a/resources/views/user/teknisi/perbaikan.blade.php
++++ b/resources/views/user/teknisi/perbaikan.blade.php
+@@ -179,107 +179,126 @@ class="w-full bg-transparent border-none focus:ring-0 p-3.5 text-sm font-medium
+                         </div>
+                     </div>
+ 
+-                    {{-- Foto --}}
+-                    <div>
+-                        <label class="block text-xs font-bold uppercase tracking-widest text-[#1b365d] mb-2.5">
+-                            Lampiran Visual Selesai
+-                        </label>
+-                        <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-2xl bg-slate-50/50 hover:bg-slate-100/50 transition-colors relative group">
+-                            <div class="space-y-2 text-center">
+-                                <svg class="mx-auto h-12 w-12 text-slate-400 group-hover:text-[#1b365d] transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+-                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+-                                </svg>
+-                                <div class="flex text-sm text-slate-600 justify-center">
+-                                    <label for="foto_bukti" class="relative cursor-pointer bg-transparent rounded-md font-bold text-[#1b365d] hover:text-[#d4af37] focus-within:outline-none transition-colors">
+-                                        <span>Pilih file foto</span>
+-                                        <input id="foto_bukti" name="foto_bukti" type="file" class="sr-only" required accept="image/*">
+-                                    </label>
+-                                    <p class="pl-1">atau tarik dan lepas di sini</p>
+-                                </div>
+-                                <p class="text-[10px] text-slate-500 uppercase tracking-wider">PNG, JPG, JPEG hingga 4MB</p>
+-                            </div>
+-                            <div id="file-name-display" class="absolute bottom-2 left-0 right-0 text-center text-xs font-bold text-[#1b365d] hidden"></div>
+-                        </div>
+-                    </div>
++                    {{-- Foto Bukti Selesai --}}
++<div>
++    <label class="block text-xs font-bold uppercase tracking-widest text-[#1b365d] mb-2.5">
++        Lampiran Visual Selesai
++    </label>
+ 
+-                    <hr class="my-8 border-slate-200">
++    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-2xl bg-slate-50/50 hover:bg-slate-100/50 transition-colors relative group">
++        <div class="space-y-2 text-center">
++            <svg class="mx-auto h-12 w-12 text-slate-400 group-hover:text-[#1b365d] transition-colors"
++                 stroke="currentColor" fill="none" viewBox="0 0 48 48"
++                 aria-hidden="true">
++                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
++                      stroke-width="2" stroke-linecap="round"
++                      stroke-linejoin="round" />
++            </svg>
+ 
+-                    {{-- Action --}}
+-                    <div class="flex flex-col-reverse sm:flex-row justify-end items-center gap-4">
+-                        <a href="{{ route('user.teknisi.detail', $laporan->uuid) }}" class="btn-outline-premium w-full sm:w-auto text-center px-8 py-3.5 rounded-xl text-sm font-bold text-slate-600 shadow-sm">
+-                            Batal
+-                        </a>
+-
+-                        <button type="button"
+-                                onclick="konfirmasiSubmit()"
+-                                class="btn-premium w-full sm:w-auto px-8 py-3.5 rounded-xl text-sm font-bold text-white shadow-lg flex justify-center items-center gap-2">
+-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+-                            </svg>
+-                            Kirim Data Perbaikan
+-                        </button>
+-                    </div>
+-                </form>
++            <div class="flex text-sm text-slate-600 justify-center">
++                <label for="foto_bukti"
++                       class="relative cursor-pointer rounded-md font-bold text-[#1b365d] hover:text-[#d4af37] transition-colors">
++                    <span>Pilih file foto</span>
++                    <input
++                        id="foto_bukti"
++                        name="foto_bukti"
++                        type="file"
++                        class="sr-only"
++                        accept=".jpg,.jpeg,.png,image/jpeg,image/png">
++                </label>
++                <p class="pl-1">atau pilih foto dari perangkat</p>
+             </div>
++
++            <p class="text-xs text-slate-500">
++                Format JPG, JPEG, atau PNG. Maksimal 10 MB.
++            </p>
++
++            @error('foto_bukti')
++                <div class="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700"
++                     role="alert">
++                    {{ $message }}
++                </div>
++            @enderror
+         </div>
+-    </div>
+ 
++        <div id="file-name-display"
++             class="absolute bottom-2 left-0 right-0 text-center text-xs font-bold text-[#1b365d] hidden">
++        </div>
++    </div>
++</div>
+     @notifyJs
+ 
+     {{-- Script SweetAlert2 untuk Notifikasi Elegan --}}
+     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+     <script>
+-        // Script UX Tambahan: Menampilkan nama file saat gambar dipilih
+-        document.getElementById('foto_bukti').addEventListener('change', function(e) {
+-            const fileName = e.target.files[0]?.name;
+-            const display = document.getElementById('file-name-display');
+-            if (fileName) {
+-                display.textContent = 'Terpilih: ' + fileName;
+-                display.classList.remove('hidden');
+-            } else {
+-                display.classList.add('hidden');
+-            }
++const fotoInput = document.getElementById('foto_bukti');
++const fileDisplay = document.getElementById('file-name-display');
++
++fotoInput.addEventListener('change', function () {
++    const file = this.files[0];
++
++    fileDisplay.classList.add('hidden');
++    fileDisplay.textContent = '';
++
++    if (!file) return;
++
++    const allowedTypes = ['image/jpeg', 'image/png'];
++    const maxSize = 10 * 1024 * 1024;
++
++    if (!allowedTypes.includes(file.type)) {
++        this.value = '';
++
++        Swal.fire({
++            icon: 'error',
++            title: 'Format File Salah',
++            text: 'Silakan pilih foto berformat JPG, JPEG, atau PNG.'
+         });
+ 
+-        function konfirmasiSubmit() {
+-            const form = document.getElementById('formPerbaikan');
+-            if (!form.checkValidity()) {
+-                form.reportValidity();
+-                return;
+-            }
++        return;
++    }
++
++    if (file.size > maxSize) {
++        this.value = '';
+ 
+-            Swal.fire({
+-                title: 'Konfirmasi Pengiriman',
+-                text: "Data perbaikan ini akan dikirim untuk diverifikasi. Lanjutkan?",
+-                icon: 'question',
+-                iconColor: '#1b365d',
+-                showCancelButton: true,
+-                buttonsStyling: false,
+-                confirmButtonText: 'Ya, Simpan Data',
+-                cancelButtonText: 'Batal',
+-                background: '#ffffff',
+-                color: '#1e293b',
+-                reverseButtons: true,
+-                customClass: {
+-                    popup: 'rounded-[2rem] shadow-2xl border border-slate-100',
+-                    actions: 'flex gap-4 w-full justify-center mt-6',
+-                    confirmButton: 'bg-[#1b365d] hover:bg-[#152a4a] text-white rounded-xl px-6 py-3 font-bold text-sm transition-all shadow-md',
+-                    cancelButton: 'bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl px-6 py-3 font-bold text-sm transition-all shadow-sm'
+-                }
+-            }).then((result) => {
+-                if (result.isConfirmed) {
+-                    Swal.fire({
+-                        title: 'Memproses Data...',
+-                        text: 'Menyinkronkan dengan sistem BMN',
+-                        allowOutsideClick: false,
+-                        didOpen: () => {
+-                            Swal.showLoading();
+-                        }
+-                    });
+-                    form.submit();
+-                }
+-            });
++        Swal.fire({
++            icon: 'error',
++            title: 'Ukuran File Terlalu Besar',
++            text: 'Ukuran foto maksimal 10 MB.'
++        });
++
++        return;
++    }
++
++    fileDisplay.textContent = 'Foto terpilih: ' + file.name;
++    fileDisplay.classList.remove('hidden');
++});
++
++    function konfirmasiSubmit() {
++        if (!form.checkValidity()) {
++            form.reportValidity();
++            return;
+         }
+-    </script>
+-</body>
+-</html>
++
++        Swal.fire({
++            title: 'Konfirmasi Pengiriman',
++            text: 'Data perbaikan ini akan dikirim untuk diverifikasi. Lanjutkan?',
++            icon: 'question',
++            iconColor: '#1b365d',
++            showCancelButton: true,
++            confirmButtonText: 'Ya, Simpan Data',
++            cancelButtonText: 'Batal',
++            reverseButtons: true
++        }).then((result) => {
++            if (result.isConfirmed) {
++                Swal.fire({
++                    title: 'Memproses Data...',
++                    text: 'Menyinkronkan dengan sistem BMN',
++                    allowOutsideClick: false,
++                    didOpen: () => Swal.showLoading()
++                });
++
++                form.submit();
++            }
++        });
++    }
++</script>
+\ No newline at end of file
+diff --git a/resources/views/welcome.blade.php b/resources/views/welcome.blade.php
+old mode 100755
+new mode 100644
+diff --git a/routes/console.php b/routes/console.php
+old mode 100755
+new mode 100644
+diff --git a/routes/web.php b/routes/web.php
+old mode 100755
+new mode 100644
+index 0512739..11aa439
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -341,18 +341,24 @@
+     Route::post('/inventaris/lapor-kerusakan/store', [LaporanKerusakanController::class, 'store'])->name('user.inventaris.lapor-kerusakan.store');
+   });
+ });
++Route::get('/admin/laporan-kerusakan/riwayat-ditolak',[\App\Http\Controllers\Admin\LaporanKerusakanAdminController::class, 'riwayatDitolak'])->name('admin.laporan-kerusakan.riwayat-ditolak');
++
+ 
+ Route::prefix('user/teknisi')->middleware(['auth', 'role:tim_perbaikan'])->name('user.teknisi.')->group(function () {
+-    Route::get('/', [TeknisiController::class, 'index'])->name('index');
+-    Route::post('/klaim/{uuid}', [TeknisiController::class, 'klaim'])->name('klaim');
+-    Route::post('/batal-klaim/{uuid}', [TeknisiController::class, 'batalKlaim'])->name('batal-klaim');
+-    Route::get('/detail/{uuid}', [TeknisiController::class, 'detail'])->name('detail');
+-    Route::get('/perbaikan/{uuid}', [TeknisiController::class, 'perbaikan'])->name('perbaikan');
+-    Route::post('/perbaikan/{uuid}', [TeknisiController::class, 'perbaikanSubmit'])->name('perbaikanSubmit');
+-    Route::post('/proses/{uuid}', [TeknisiController::class, 'proses'])->name('proses');
+-    Route::get('/logbook', [TeknisiController::class, 'logbook'])->name('logbook');
+-    Route::get('/logbook/pdf', [TeknisiController::class, 'downloadPdf'])->name('logbook.pdf');
+-});
++        Route::get('/', [TeknisiController::class, 'index'])->name('index');
++        Route::get('/logbook/detail/{uuid}', [TeknisiController::class, 'logbookDetail'])->name('logbook.detail');
++        Route::post('/klaim/{uuid}', [TeknisiController::class, 'klaim'])->name('klaim');
++        Route::post('/batal-klaim/{uuid}', [TeknisiController::class, 'batalKlaim'])->name('batal-klaim');
++        // Detail laporan kerusakan awal — tetap dipertahankan
++        Route::get('/detail/{uuid}', [TeknisiController::class, 'detail'])->name('detail');
++        Route::get('/perbaikan/{uuid}', [TeknisiController::class, 'perbaikan'])->name('perbaikan');
++        Route::post('/perbaikan/{uuid}', [TeknisiController::class, 'perbaikanSubmit'])->name('perbaikanSubmit');
++        Route::post('/proses/{uuid}', [TeknisiController::class, 'proses'])->name('proses');
++        Route::get('/logbook', [TeknisiController::class, 'logbook'])->name('logbook');
++        // Detail hasil pengerjaan dari tabel perawatan_inventaris
++        Route::get('/logbook/detail/{uuid}', [TeknisiController::class, 'logbookDetail'])->name('logbook.detail');
++        Route::get('/logbook/pdf', [TeknisiController::class, 'downloadPdf'])->name('logbook.pdf');
++    });
+ 
+ Route::prefix('qr')->group(function () {
+   Route::get('/all', [QrController::class, 'qrAll'])->name('qr.inventaris.all');
