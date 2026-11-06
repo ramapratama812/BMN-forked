@@ -51,6 +51,17 @@ class LaporanKerusakanAdminController extends Controller
             ->with('success', 'Laporan telah ditolak dan dihapus dari daftar antrean.');
     }
 
+    public function riwayatDitolak()
+{
+    $laporan = LaporanKerusakan::with(['barang', 'user'])
+        ->where('status', 'ditolak')
+        ->orderBy('updated_at', 'desc')
+        ->paginate(10);
+
+    $title = 'Riwayat Laporan Ditolak';
+
+    return view('admin.laporan_kerusakan.riwayat_ditolak', compact('laporan', 'title'));
+}
     public function exportPDF()
     {
         // Tambahkan 'user' di dalam with()

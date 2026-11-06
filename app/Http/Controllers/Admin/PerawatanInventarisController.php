@@ -15,30 +15,33 @@ use Illuminate\Support\Facades\DB;
 
 class PerawatanInventarisController extends Controller
 {
-    public function index(Request $request)
-    {
-        // 1. Ambil ID barang yang sudah ditarik ke daftar Rencana Penghapusan
-        $barangDihapusIds = PerawatanInventaris::where('jenis_perawatan', 'rencana_penghapusan')
-            ->pluck('barang_id');
 
-        // 2. Filter query utama agar barang yang mau dihapus hilang dari antrean
-        $query = PerawatanInventaris::with('barang')
-            ->where('jenis_perawatan', 'perbaikan')
-            ->where('status', '!=', 'selesai')
-            ->whereNotIn('barang_id', $barangDihapusIds); // <-- Tambahkan logika ini
+public function index(Request $request)
+{
+    // Ambil ID barang yang sudah diajukan atau sudah masuk penghapusan
+    $barangDikecualikan = PerawatanInventaris::whereIn(
+        'jenis_perawatan',
+        ['rencana_penghapusan', 'penghapusan']
+    )->pluck('barang_id')->unique();
 
-        // (Opsional) Jika Anda ingin filter di view tetap berfungsi untuk 'search'
-        if ($request->has('search') && $request->search != '') {
-            $query->whereHas('barang', function ($q) use ($request) {
-                $q->where('nama_barang', 'like', '%' . $request->search . '%');
-            });
-        }
+    // Tampilkan antrean perbaikan yang belum selesai
+    $query = PerawatanInventaris::with('barang')
+        ->where('jenis_perawatan', 'perbaikan')
+        ->where('status', '!=', 'selesai')
+        ->whereNotIn('barang_id', $barangDikecualikan);
 
-        $data = $query->latest()->get();
-
-        $title = "Perawatan Inventaris";
-        return view('admin.perawatan_inventaris.index', compact('data', 'title'));
+    if ($request->filled('search')) {
+        $query->whereHas('barang', function ($q) use ($request) {
+            $q->where('nama_barang', 'like', '%' . $request->search . '%');
+        });
     }
+
+    $data = $query->latest()->get();
+
+    $title = "Perawatan Inventaris";
+
+    return view('admin.perawatan_inventaris.index', compact('data', 'title'));
+}
 
     public function detail($id)
     {
@@ -89,6 +92,7 @@ class PerawatanInventarisController extends Controller
 
         $p = PerawatanInventaris::findOrFail($id);
 
+        // Proses simpan file foto jika ada
         $fotoPath = null;
         $savedPaths = [];
 
@@ -183,7 +187,7 @@ class PerawatanInventarisController extends Controller
 
         // 2. Jangan aktifkan kembali barang jika status pekerjaan teknisi 'tidak_dapat_diperbaiki'
         if ($p->status === 'tidak_dapat_diperbaiki') {
-            $p->update(['status' => 'selesai']);
+        $p->update(['status' => 'selesai']);
 
             return redirect()->route('perawatan_inventaris.index')
                 ->with('warning', 'Perawatan diselesaikan. Barang tetap berstatus rusak karena tidak dapat diperbaiki.');

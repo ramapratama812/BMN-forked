@@ -14,14 +14,17 @@ class LaporanKerusakanController extends Controller
     public function form($id)
     {
         $barang = BmnBarang::findOrFail($id);
-
         $jenis_kerusakan = BmnJenisKerusakan::all();
 
-        return view('user.inventaris.lapor_kerusakan', compact('barang', 'jenis_kerusakan'));
+        return view(
+            'user.inventaris.lapor_kerusakan',
+            compact('barang', 'jenis_kerusakan')
+        );
     }
 
     public function store(Request $request)
     {
+        // Validasi data laporan dan file unggahan.
         $request->validate([
             'barang_id' => 'required',
             'jenis_kerusakan' => 'required',
@@ -69,6 +72,9 @@ class LaporanKerusakanController extends Controller
                 'id' => $request->barang_id,
                 'from' => $request->from // Mengembalikan parameter from ke URL
             ])
-            ->with('success', 'Laporan telah dikirim, menunggu verifikasi admin.');
+            ->with(
+                'success',
+                'Laporan telah dikirim, menunggu verifikasi admin.'
+            );
     }
 }

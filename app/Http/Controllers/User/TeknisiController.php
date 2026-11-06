@@ -17,21 +17,24 @@ class TeknisiController extends Controller
     {
         $userId = Auth::id();
 
-        // 1. Antrean Terbuka (Belum diklaim siapapun)
+        // Antrean terbuka yang belum diklaim teknisi
         $antrean_tersedia = LaporanKerusakan::with(['barang', 'user'])
             ->where('status', 'disetujui')
             ->whereNull('teknisi_id')
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        // 2. Tugas Saya (Sudah diklaim oleh teknisi yang login)
+        // Tugas yang sudah diklaim teknisi yang login
         $tugas_saya = LaporanKerusakan::with(['barang', 'user'])
             ->where('status', 'disetujui')
             ->where('teknisi_id', $userId)
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        return view('user.teknisi.index', compact('antrean_tersedia', 'tugas_saya'));
+        return view(
+            'user.teknisi.index',
+            compact('antrean_tersedia', 'tugas_saya')
+        );
     }
 
     public function klaim($uuid)
@@ -46,10 +49,12 @@ class TeknisiController extends Controller
             ]);
 
         if ($updated) {
-            return redirect()->back()->with('success', 'Tugas berhasil diambil alih!');
+            return redirect()->back()
+                ->with('success', 'Tugas berhasil diambil alih!');
         }
 
-        return redirect()->back()->with('error', 'Maaf, tugas ini sudah diklaim oleh teknisi lain.');
+        return redirect()->back()
+            ->with('error', 'Maaf, tugas ini sudah diklaim oleh teknisi lain.');
     }
 
     public function batalKlaim($uuid)
@@ -61,9 +66,13 @@ class TeknisiController extends Controller
                 'updated_at' => now()
             ]);
 
-        return redirect()->back()->with('info', 'Tugas berhasil dikembalikan ke antrean.');
+        return redirect()->back()
+            ->with('info', 'Tugas berhasil dikembalikan ke antrean.');
     }
 
+    /**
+     * Detail laporan kerusakan awal.
+     */
     public function detail($uuid)
     {
         // PERKETAT KEAMANAN: Pastikan hanya teknisi yang mengklaim yang bisa buka detail
@@ -87,6 +96,7 @@ class TeknisiController extends Controller
 
     public function perbaikanSubmit(Request $request, $uuid)
     {
+        // Validasi input dan unggahan bukti perbaikan
         $request->validate([
             'deskripsi'        => 'required',
             'biaya'            => 'required|numeric',
@@ -95,7 +105,9 @@ class TeknisiController extends Controller
             'foto_bukti.*'     => 'image|max:4096'
         ]);
 
-        $laporan = LaporanKerusakan::where('uuid', $uuid)->firstOrFail();
+        $laporan = LaporanKerusakan::where('uuid', $uuid)
+            ->where('teknisi_id', Auth::id())
+            ->firstOrFail();
 
         $fotoPath = null;
         $savedPaths = [];
@@ -138,23 +150,38 @@ class TeknisiController extends Controller
 
         $laporan->delete();
 
-        return redirect()->route('user.teknisi.logbook')->with('success', 'Perbaikan berhasil! Data telah diserahkan ke Admin Perawatan Inventaris untuk verifikasi.');
+        return redirect()
+            ->route('user.teknisi.logbook')
+            ->with(
+                'success',
+                'Perbaikan berhasil! Data telah diserahkan ke Admin Perawatan Inventaris untuk verifikasi.'
+            );
     }
 
+    /**
+     * Menampilkan riwayat pengerjaan teknisi.
+     */
     public function logbook(Request $request)
     {
         $query = PerawatanInventaris::with(['barang', 'fotosBukti'])
             ->where('user_id', Auth::id())
             ->where('jenis_perawatan', 'perbaikan')
-            ->whereIn('status', ['proses', 'diperbaiki', 'tidak_dapat_diperbaiki', 'selesai']);
+            ->whereIn('status', [
+                'proses',
+                'diperbaiki',
+                'tidak_dapat_diperbaiki',
+                'selesai',
+            ]);
 
         $periodeText = 'Semua Waktu';
 
         // Filter Per Bulan
         if ($request->filled('filter_month')) {
             $date = Carbon::parse($request->filter_month);
+
             $query->whereYear('updated_at', $date->year)
-                  ->whereMonth('updated_at', $date->month);
+                ->whereMonth('updated_at', $date->month);
+
             $periodeText = 'Bulan ' . $date->translatedFormat('F Y');
         }
         // Filter Per Minggu (Format HTML5 Week: YYYY-Www, contoh: 2026-W10)
@@ -162,49 +189,105 @@ class TeknisiController extends Controller
             $year = substr($request->filter_week, 0, 4);
             $week = substr($request->filter_week, 6);
 
-            $start = Carbon::now()->setISODate($year, $week)->startOfWeek();
-            $end = Carbon::now()->setISODate($year, $week)->endOfWeek();
+            $start = Carbon::now()
+                ->setISODate($year, $week)
+                ->startOfWeek();
+
+            $end = Carbon::now()
+                ->setISODate($year, $week)
+                ->endOfWeek();
 
             $query->whereBetween('updated_at', [$start, $end]);
-            $periodeText = 'Minggu ke-' . $week . ' Tahun ' . $year . ' (' . $start->format('d/m/Y') . ' - ' . $end->format('d/m/Y') . ')';
+
+            $periodeText = 'Minggu ke-' . $week
+                . ' Tahun ' . $year
+                . ' (' . $start->format('d/m/Y')
+                . ' - ' . $end->format('d/m/Y') . ')';
         }
 
-        $logbook = $query->orderBy('updated_at', 'desc')->paginate(9)->withQueryString();
+        $logbook = $query
+            ->orderBy('updated_at', 'desc')
+            ->paginate(9)
+            ->withQueryString();
 
-        return view('user.teknisi.logbook', compact('logbook', 'periodeText'));
+        return view(
+            'user.teknisi.logbook',
+            compact('logbook', 'periodeText')
+        );
     }
 
+    /**
+     * Detail hasil pengerjaan dari logbook.
+     */
+    public function logbookDetail($uuid)
+    {
+        $perawatan = PerawatanInventaris::with(['barang'])
+            ->where('uuid', $uuid)
+            ->where('user_id', Auth::id())
+            ->where('jenis_perawatan', 'perbaikan')
+            ->firstOrFail();
+
+        return view('user.teknisi.logbook-detail', compact('perawatan'));
+    }
+
+    /**
+     * Mengunduh laporan logbook dalam format PDF.
+     */
     public function downloadPdf(Request $request)
     {
         $query = PerawatanInventaris::with(['barang', 'fotosBukti'])
             ->where('user_id', Auth::id())
             ->where('jenis_perawatan', 'perbaikan')
-            ->whereIn('status', ['proses', 'diperbaiki', 'tidak_dapat_diperbaiki', 'selesai']);
+            ->whereIn('status', [
+                'proses',
+                'diperbaiki',
+                'tidak_dapat_diperbaiki',
+                'selesai',
+            ]);
 
         $periodeText = 'Semua Waktu';
 
         if ($request->filled('filter_month')) {
             $date = Carbon::parse($request->filter_month);
+
             $query->whereYear('updated_at', $date->year)
-                  ->whereMonth('updated_at', $date->month);
+                ->whereMonth('updated_at', $date->month);
+
             $periodeText = 'Bulan ' . $date->translatedFormat('F Y');
         } elseif ($request->filled('filter_week')) {
             $year = substr($request->filter_week, 0, 4);
             $week = substr($request->filter_week, 6);
 
-            $start = Carbon::now()->setISODate($year, $week)->startOfWeek();
-            $end = Carbon::now()->setISODate($year, $week)->endOfWeek();
+            $start = Carbon::now()
+                ->setISODate($year, $week)
+                ->startOfWeek();
+
+            $end = Carbon::now()
+                ->setISODate($year, $week)
+                ->endOfWeek();
 
             $query->whereBetween('updated_at', [$start, $end]);
-            $periodeText = 'Minggu ke-' . $week . ' Tahun ' . $year . ' (' . $start->format('d/m/Y') . ' - ' . $end->format('d/m/Y') . ')';
+
+            $periodeText = 'Minggu ke-' . $week
+                . ' Tahun ' . $year
+                . ' (' . $start->format('d/m/Y')
+                . ' - ' . $end->format('d/m/Y') . ')';
         }
 
-        $logbook = $query->orderBy('updated_at', 'desc')->get();
+        $logbook = $query
+            ->orderBy('updated_at', 'desc')
+            ->get();
 
-        $pdf = Pdf::loadView('user.teknisi.pdf_logbook', compact('logbook', 'periodeText'))
-                  ->setPaper('a4', 'landscape');
+        $pdf = Pdf::loadView(
+            'user.teknisi.pdf_logbook',
+            compact('logbook', 'periodeText')
+        )->setPaper('a4', 'landscape');
 
-        $namaFile = 'Laporan_Kinerja_Teknisi_' . str_replace(' ', '_', Auth::user()->nama_lengkap) . '_' . date('d-m-Y') . '.pdf';
+        $namaTeknisi = Auth::user()->nama_lengkap ?? 'Teknisi';
+
+        $namaFile = 'Laporan_Kinerja_Teknisi_'
+            . str_replace(' ', '_', $namaTeknisi)
+            . '_' . date('d-m-Y') . '.pdf';
 
         return $pdf->download($namaFile);
     }

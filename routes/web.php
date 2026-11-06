@@ -353,18 +353,24 @@ Route::prefix('user')->group(function () {
     Route::post('/inventaris/lapor-kerusakan/store', [LaporanKerusakanController::class, 'store'])->name('user.inventaris.lapor-kerusakan.store');
   });
 });
+Route::get('/admin/laporan-kerusakan/riwayat-ditolak',[\App\Http\Controllers\Admin\LaporanKerusakanAdminController::class, 'riwayatDitolak'])->name('admin.laporan-kerusakan.riwayat-ditolak');
+
 
 Route::prefix('user/teknisi')->middleware(['auth', 'role:tim_perbaikan'])->name('user.teknisi.')->group(function () {
-    Route::get('/', [TeknisiController::class, 'index'])->name('index');
-    Route::post('/klaim/{uuid}', [TeknisiController::class, 'klaim'])->name('klaim');
-    Route::post('/batal-klaim/{uuid}', [TeknisiController::class, 'batalKlaim'])->name('batal-klaim');
-    Route::get('/detail/{uuid}', [TeknisiController::class, 'detail'])->name('detail');
-    Route::get('/perbaikan/{uuid}', [TeknisiController::class, 'perbaikan'])->name('perbaikan');
-    Route::post('/perbaikan/{uuid}', [TeknisiController::class, 'perbaikanSubmit'])->name('perbaikanSubmit');
-    Route::post('/proses/{uuid}', [TeknisiController::class, 'proses'])->name('proses');
-    Route::get('/logbook', [TeknisiController::class, 'logbook'])->name('logbook');
-    Route::get('/logbook/pdf', [TeknisiController::class, 'downloadPdf'])->name('logbook.pdf');
-});
+        Route::get('/', [TeknisiController::class, 'index'])->name('index');
+        Route::get('/logbook/detail/{uuid}', [TeknisiController::class, 'logbookDetail'])->name('logbook.detail');
+        Route::post('/klaim/{uuid}', [TeknisiController::class, 'klaim'])->name('klaim');
+        Route::post('/batal-klaim/{uuid}', [TeknisiController::class, 'batalKlaim'])->name('batal-klaim');
+        // Detail laporan kerusakan awal — tetap dipertahankan
+        Route::get('/detail/{uuid}', [TeknisiController::class, 'detail'])->name('detail');
+        Route::get('/perbaikan/{uuid}', [TeknisiController::class, 'perbaikan'])->name('perbaikan');
+        Route::post('/perbaikan/{uuid}', [TeknisiController::class, 'perbaikanSubmit'])->name('perbaikanSubmit');
+        Route::post('/proses/{uuid}', [TeknisiController::class, 'proses'])->name('proses');
+        Route::get('/logbook', [TeknisiController::class, 'logbook'])->name('logbook');
+        // Detail hasil pengerjaan dari tabel perawatan_inventaris
+        Route::get('/logbook/detail/{uuid}', [TeknisiController::class, 'logbookDetail'])->name('logbook.detail');
+        Route::get('/logbook/pdf', [TeknisiController::class, 'downloadPdf'])->name('logbook.pdf');
+    });
 
 Route::prefix('qr')->group(function () {
   Route::get('/all', [QrController::class, 'qrAll'])->name('qr.inventaris.all');

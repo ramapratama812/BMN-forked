@@ -15,7 +15,7 @@ class PerawatanInventaris extends Model
     protected $fillable = [
         'uuid',
         'barang_id',
-        'user_id', // <-- WAJIB ditambahkan agar bisa menyimpan ID teknisi
+        'user_id',
         'tanggal_perawatan',
         'jenis_perawatan',
         'deskripsi',
@@ -23,13 +23,15 @@ class PerawatanInventaris extends Model
         'biaya',
         'foto_kerusakan',
         'foto_bukti',
+        'dokumen_bukti',
         'surat_penghapusan'
     ];
 
-    // Tambahkan ini agar UUID terisi otomatis
+    // UUID terisi otomatis saat data dibuat
     protected static function boot()
     {
         parent::boot();
+
         static::creating(function ($model) {
             $model->uuid = (string) Str::uuid(); // Gunakan (string) agar pasti bertipe string
         });

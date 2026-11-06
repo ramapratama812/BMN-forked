@@ -20,7 +20,9 @@ class InventarisUserController extends Controller
         $barang = BmnBarang::with('perawatan')
             ->whereDoesntHave('perawatan', function ($q) {
                 $q->where('jenis_perawatan', 'penghapusan');
-            })->latest()->paginate(10);
+            })
+            ->latest()
+            ->paginate(10);
 
         return view('user.inventaris', compact('title', 'barang'));
     }
@@ -28,12 +30,20 @@ class InventarisUserController extends Controller
     public function showAll()
     {
         $title = "Semua Inventaris (Scan ALL)";
+
         $barang = BmnBarang::with('perawatan')
             ->whereDoesntHave('perawatan', function ($q) {
                 $q->where('jenis_perawatan', 'penghapusan');
-            })->latest()->paginate(12);
+            })
+            ->latest()
+            ->paginate(12);
+
         $ruangan = request('ruangan') ?? 'default';
-        return view('user.inventaris.show_all', compact('title', 'barang','ruangan'));
+
+        return view(
+            'user.inventaris.show_all',
+            compact('title', 'barang', 'ruangan')
+        );
     }
 
     public function scan(Request $request, $kode) // <-- Tambahkan Request $request
@@ -42,7 +52,8 @@ class InventarisUserController extends Controller
         $from = $request->query('from'); // <-- Tangkap parameter asal
 
         if (strtoupper($kode) === 'ALL') {
-            return redirect()->route('user.inventaris.show_all')
+            return redirect()
+                ->route('user.inventaris.show_all')
                 ->with('success', 'Menampilkan semua barang.');
         }
 
@@ -74,11 +85,14 @@ class InventarisUserController extends Controller
 
         $title = "Detail Barang";
 
-        return view('user.inventaris.detail', compact('title', 'barang'));
+        return view(
+            'user.inventaris.detail',
+            compact('title', 'barang')
+        );
     }
 
     /**
-     * Download Universal QR Inventaris (tetap menggunakan route name user.inventaris.scan)
+     * Download QR Inventaris.
      */
     public function downloadAllQR()
     {
@@ -101,28 +115,55 @@ class InventarisUserController extends Controller
 
                 // Resize tetap proporsional
                 $logoSize = intval($qr->getImageWidth() * 0.20);
-                $logo->resizeImage($logoSize, $logoSize, Imagick::FILTER_LANCZOS, 1);
+
+                $logo->resizeImage(
+                    $logoSize,
+                    $logoSize,
+                    Imagick::FILTER_LANCZOS,
+                    1
+                );
 
                 // Posisi tengah
                 $x = intval(($qr->getImageWidth() - $logoSize) / 2);
                 $y = intval(($qr->getImageHeight() - $logoSize) / 2);
 
-                $qr->compositeImage($logo, Imagick::COMPOSITE_OVER, $x, $y);
+                $qr->compositeImage(
+                    $logo,
+                    Imagick::COMPOSITE_OVER,
+                    $x,
+                    $y
+                );
+
+                $logo->clear();
+                $logo->destroy();
             }
 
             $qrOutput = $qr->getImageBlob();
 
-            return Response::streamDownload(function () use ($qrOutput) {
-                echo $qrOutput;
-            }, 'QR-Inventaris.png', [
-                'Content-Type' => 'image/png'
-            ]);
+            $qr->clear();
+            $qr->destroy();
+
+            return Response::streamDownload(
+                function () use ($qrOutput) {
+                    echo $qrOutput;
+                },
+                'QR-Inventaris.png',
+                [
+                    'Content-Type' => 'image/png',
+                ]
+            );
 
         } catch (ImagickException $e) {
-            return back()->with('error', 'Gagal membuat QR. Error: ' . $e->getMessage());
+            return back()->with(
+                'error',
+                'Gagal membuat QR. Error: ' . $e->getMessage()
+            );
         }
     }
 
+    /**
+     * Form laporan kerusakan.
+     */
     public function laporKerusakanForm($id)
     {
         $barang = BmnBarang::findOrFail($id);
@@ -131,28 +172,40 @@ class InventarisUserController extends Controller
         return view('user.inventaris.lapor_kerusakan', compact('barang'));
     }
 
+    /**
+     * Menyimpan laporan kerusakan inventaris.
+     */
     public function laporKerusakanSubmit(Request $request)
     {
         $request->validate([
             'barang_id' => 'required|exists:bmn_barangs,id',
-            'jenis_kerusakan' => 'required|string', // Tambahkan ini
+            'jenis_kerusakan' => 'required|string',
             'deskripsi' => 'required|string',
-            'foto'      => 'required|image|mimes:jpg,jpeg,png|max:2048',
+            'foto' => 'required|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $path = $request->file('foto')->store('laporan/foto', 'public');
+        $path = $request->file('foto')->store(
+            'laporan/foto',
+            'public'
+        );
 
         PerawatanInventaris::create([
             'barang_id' => $request->barang_id,
             'tanggal_perawatan' => now(),
-            'deskripsi' => $request->jenis_kerusakan . ' - ' . $request->deskripsi, // Gabungkan agar tersimpan
+            'deskripsi' => $request->jenis_kerusakan
+                . ' - '
+                . $request->deskripsi,
             'foto' => $path,
             'status' => 'pending',
-            'jenis' => 'laporan_kerusakan'
+            'jenis' => 'laporan_kerusakan',
         ]);
 
-        return redirect()->route('user.inventaris.detail', $request->barang_id)
-            ->with('success', 'Laporan kerusakan berhasil dikirim.');
+        return redirect()
+            ->route('user.inventaris.detail', $request->barang_id)
+            ->with(
+                'success',
+                'Laporan kerusakan berhasil dikirim.'
+            );
     }
 
     public function scanRak($uuid)
@@ -173,12 +226,13 @@ class InventarisUserController extends Controller
         $barang = \App\Models\BmnBarang::with('perawatan')
             ->whereDoesntHave('perawatan', function ($q) {
                 $q->where('jenis_perawatan', 'penghapusan');
-            })->where('ruangan', $nama_rak)->get();
+            })
+            ->where('ruangan', $nama_rak)
+            ->get();
 
         return view('user.inventaris.hasil_scan_rak', [
-            'barang'   => $barang,
+            'barang' => $barang,
             'nama_rak' => $nama_rak,
         ]);
     }
-
 }
