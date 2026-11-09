@@ -165,7 +165,7 @@ class BarangController extends Controller
             $data['foto'] = 'default.jpg';
         }
 
-        Barang::create([
+        $barang = Barang::create([
                 'uuid' => Str::uuid(),
                 'kode_barang' => $kode_barang,
                 'nama_barang' => $request->nama_barang,
