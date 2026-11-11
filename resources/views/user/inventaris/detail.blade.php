@@ -78,9 +78,22 @@
     @endphp
 
     @if (session('success'))
-    <div class="animate-reveal p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 shadow-sm mb-8">
+    <div id="flash-success" class="animate-reveal p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700 shadow-sm mb-8">
         <span class="material-symbols-outlined text-emerald-500">verified</span>
         <p class="text-sm font-semibold">{{ session('success') }}</p>
+        <button type="button" onclick="document.getElementById('flash-success').remove()" class="ml-auto text-emerald-400 hover:text-emerald-600 transition-colors">
+            <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+    </div>
+    @endif
+
+    @if (session('error'))
+    <div id="flash-error" class="animate-reveal p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-700 shadow-sm mb-8">
+        <span class="material-symbols-outlined text-red-500">error</span>
+        <p class="text-sm font-semibold">{{ session('error') }}</p>
+        <button type="button" onclick="document.getElementById('flash-error').remove()" class="ml-auto text-red-400 hover:text-red-600 transition-colors">
+            <span class="material-symbols-outlined text-lg">close</span>
+        </button>
     </div>
     @endif
 
@@ -332,5 +345,19 @@
     </main>
 </div>
 
+
+<script>
+    // Auto-dismiss flash notifications after 5 seconds
+    ['flash-success', 'flash-error'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            setTimeout(function() {
+                el.style.transition = 'opacity 0.5s ease';
+                el.style.opacity = '0';
+                setTimeout(function() { el.remove(); }, 500);
+            }, 5000);
+        }
+    });
+</script>
 </body>
 </html>

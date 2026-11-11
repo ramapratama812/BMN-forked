@@ -80,7 +80,7 @@
                     <div class="flex items-center gap-4">
                         {{-- TOMBOL BACK BARU --}}
                         <a href="{{ url()->previous() }}"
-                        class="flex items-center justify-center min-w-[40px] h-10 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-primary-600 transition-all shadow-sm">
+                            class="flex items-center justify-center min-w-[40px] h-10 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-primary-600 transition-all shadow-sm">
                             <span class="material-symbols-outlined">arrow_back</span>
                         </a>
 
@@ -94,7 +94,8 @@
                         </div>
                     </div>
 
-                    <div class="hidden sm:flex h-12 w-12 bg-primary-100 dark:bg-primary-900/30 rounded-full items-center justify-center text-primary-600 dark:text-primary-400">
+                    <div
+                        class="hidden sm:flex h-12 w-12 bg-primary-100 dark:bg-primary-900/30 rounded-full items-center justify-center text-primary-600 dark:text-primary-400">
                         <span class="material-symbols-outlined text-2xl">assignment_late</span>
                     </div>
                 </div>
@@ -125,8 +126,38 @@
 
             {{-- ALERT SUCCESS --}}
             @if (session('success'))
-                <div class="p-4 bg-green-100 text-green-800 text-sm">
-                    {{ session('success') }}
+                <div id="flash-success" class="p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3 text-green-800 text-sm mx-6 mt-6 shadow-sm">
+                    <span class="material-symbols-outlined text-green-500 text-xl">check_circle</span>
+                    <p class="font-semibold flex-1">{{ session('success') }}</p>
+                    <button type="button" onclick="document.getElementById('flash-success').remove()" class="text-green-400 hover:text-green-600">
+                        <span class="material-symbols-outlined text-lg">close</span>
+                    </button>
+                </div>
+            @endif
+
+            {{-- ALERT ERROR --}}
+            @if (session('error'))
+                <div id="flash-error" class="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-800 text-sm mx-6 mt-6 shadow-sm">
+                    <span class="material-symbols-outlined text-red-500 text-xl">error</span>
+                    <p class="font-semibold flex-1">{{ session('error') }}</p>
+                    <button type="button" onclick="document.getElementById('flash-error').remove()" class="text-red-400 hover:text-red-600">
+                        <span class="material-symbols-outlined text-lg">close</span>
+                    </button>
+                </div>
+            @endif
+
+            {{-- VALIDATION ERRORS --}}
+            @if ($errors->any())
+                <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 text-sm mx-6 mt-6 shadow-sm">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="material-symbols-outlined text-red-500 text-xl">warning</span>
+                        <p class="font-bold">Mohon perbaiki kesalahan berikut:</p>
+                    </div>
+                    <ul class="list-disc list-inside space-y-1 text-sm text-red-700">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
                 </div>
             @endif
 
@@ -204,7 +235,7 @@
                                 </div>
 
                                 <p class="text-xs text-slate-400 dark:text-slate-500">
-                                    PNG, JPG up to 10MB
+                                    PNG, JPG, up to 4MB
                                 </p>
 
                                 <p id="file-name"
@@ -212,12 +243,40 @@
                                 </p>
                             </div>
 
-                            <input id="file-upload" name="foto[]" multiple accept="image/*" type="file"
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                            <input id="file-upload" name="foto" {{-- UBAH DARI 'file-upload' MENJADI 'foto' --}} type="file"
+                                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                onchange="const name = this.files[0]?.name; document.getElementById('file-name').textContent = name ? 'Selected: ' + name : '';" />
                         </div>
-                        <div id="file-error" class="text-red-500 text-sm mt-2 hidden bg-red-50 p-2 rounded border border-red-100"></div>
+                        <div id="file-error"
+                            class="text-red-500 text-sm mt-2 hidden bg-red-50 p-2 rounded border border-red-100"></div>
                         <div id="image-preview-container" class="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-4"></div>
                     </div>
+                    @error('foto')
+                        <p class="mt-2 text-sm font-medium text-red-600" role="alert">
+                            {{ $message }}
+                        </p>
+                    @enderror
+
+                    {{-- Dokumen Pendukung Kerusakan --}}
+                    <div class="mt-6">
+                        <label class="block text-xs font-semibold text-slate-700 mb-2">
+                            Dokumen Pendukung
+                        </label>
+
+                        <div class="border-2 border-dashed border-slate-300 rounded-xl p-5 bg-white text-center">
+                            <input type="file" id="dokumen_bukti" name="dokumen_bukti" accept=".pdf,.doc,.docx"
+                                class="block w-full mt-3 text-sm text-slate-600">
+                            </label>
+
+                            <p class="text-xs text-slate-500 mt-2">
+                                PDF, DOC, atau DOCX up to 10MB
+                            </p>
+
+                            <p id="dokumen-name-display" class="text-xs text-blue-900 mt-2 break-all"></p>
+                        </div>
+                    </div>
+
                     <div class="pt-2 flex flex-col-reverse sm:flex-row gap-3">
                         <a class="w-full sm:w-auto px-6 py-3 border border-slate-300 dark:border-slate-600 shadow-sm text-sm font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-all text-center"
                             href="{{ url()->previous() }}">
@@ -235,11 +294,14 @@
     </div>
 
     {{-- MODAL PREVIEW FOTO --}}
-    <div id="image-modal" class="fixed inset-0 z-[200] hidden bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
-        <button type="button" onclick="closeModal()" class="absolute top-6 right-6 text-white hover:text-red-400 transition-colors z-[210]">
+    <div id="image-modal"
+        class="fixed inset-0 z-[200] hidden bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <button type="button" onclick="closeModal()"
+            class="absolute top-6 right-6 text-white hover:text-red-400 transition-colors z-[210]">
             <span class="material-symbols-outlined text-4xl">close</span>
         </button>
-        <img id="modal-image" src="" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain relative z-[205]">
+        <img id="modal-image" src=""
+            class="max-w-full max-h-full rounded-lg shadow-2xl object-contain relative z-[205]">
     </div>
 
     <script>
@@ -247,56 +309,84 @@
         const previewContainer = document.getElementById('image-preview-container');
         const fileError = document.getElementById('file-error');
         const fileNameDisplay = document.getElementById('file-name');
-        
-        let dt = new DataTransfer(); 
+
+        let dt = new DataTransfer();
+
+        // Auto-dismiss flash notifications
+        ['flash-success', 'flash-error'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                setTimeout(function() {
+                    el.style.transition = 'opacity 0.5s ease';
+                    el.style.opacity = '0';
+                    setTimeout(function() { el.remove(); }, 500);
+                }, 5000);
+            }
+        });
+
+        // Loading state on form submit
+        const form = document.querySelector('form');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        form.addEventListener('submit', function(e) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+                Mengirim...
+            `;
+            submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+        });
 
         fileUpload.addEventListener('change', function(e) {
             fileError.classList.add('hidden');
             fileError.innerHTML = '';
-            
+
             let files = e.target.files;
             let errors = [];
-            
+
             for (let i = 0; i < files.length; i++) {
                 let file = files[i];
-                
+
                 if (file.size > 4 * 1024 * 1024) {
                     errors.push(`File "<b>${file.name}</b>" gagal ditambahkan: Maksimal 4 MB.`);
                     continue;
                 }
-                
+
                 if (!file.type.startsWith('image/')) {
                     errors.push(`File "<b>${file.name}</b>" gagal ditambahkan: Bukan format gambar.`);
                     continue;
                 }
-                
+
                 dt.items.add(file);
             }
-            
+
             if (errors.length > 0) {
                 fileError.innerHTML = errors.join('<br>');
                 fileError.classList.remove('hidden');
             }
-            
+
             updateInputAndPreviews();
         });
 
         function updateInputAndPreviews() {
             fileUpload.files = dt.files;
             previewContainer.innerHTML = '';
-            
+
             let count = dt.files.length;
             fileNameDisplay.textContent = count > 0 ? count + ' gambar dipilih' : '';
-            
+
             for (let i = 0; i < dt.files.length; i++) {
                 let file = dt.files[i];
                 let reader = new FileReader();
-                
+
                 reader.readAsDataURL(file);
                 reader.onload = function(e) {
                     let div = document.createElement('div');
-                    div.className = 'relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm aspect-square bg-slate-50';
-                    
+                    div.className =
+                        'relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm aspect-square bg-slate-50';
+
                     let img = document.createElement('img');
                     img.src = e.target.result;
                     img.className = 'w-full h-full object-cover';
@@ -304,24 +394,26 @@
                     let openBtn = document.createElement('button');
                     openBtn.type = 'button';
                     openBtn.innerHTML = 'Buka';
-                    openBtn.className = 'absolute inset-0 m-auto w-16 h-8 bg-black/60 text-white rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-black/80 z-10';
+                    openBtn.className =
+                        'absolute inset-0 m-auto w-16 h-8 bg-black/60 text-white rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-black/80 z-10';
                     openBtn.onclick = function(event) {
                         event.preventDefault();
                         event.stopPropagation();
                         openModal(e.target.result);
                     };
-                    
+
                     let btn = document.createElement('button');
                     btn.type = 'button';
                     btn.innerHTML = '×';
-                    btn.className = 'absolute top-1.5 right-1.5 bg-red-500/90 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 shadow-sm hover:bg-red-600 z-20';
-                    
+                    btn.className =
+                        'absolute top-1.5 right-1.5 bg-red-500/90 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 shadow-sm hover:bg-red-600 z-20';
+
                     btn.onclick = function(event) {
-                        event.preventDefault(); 
+                        event.preventDefault();
                         event.stopPropagation();
                         removeFile(i);
                     };
-                    
+
                     div.appendChild(img);
                     div.appendChild(openBtn);
                     div.appendChild(btn);
@@ -329,7 +421,7 @@
                 };
             }
         }
-        
+
         function removeFile(indexToRemove) {
             let newDt = new DataTransfer();
             for (let i = 0; i < dt.files.length; i++) {

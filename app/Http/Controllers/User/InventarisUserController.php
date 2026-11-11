@@ -67,7 +67,7 @@ class InventarisUserController extends Controller
             // <-- Teruskan parameter 'from' ke halaman detail
             return redirect()->route('user.inventaris.detail', [
                 'id' => $barang->id,
-                'from' => $from
+                'from' => $from,
             ]);
         }
 
@@ -81,7 +81,8 @@ class InventarisUserController extends Controller
         $barang = BmnBarang::with('perawatan')
             ->whereDoesntHave('perawatan', function ($q) {
                 $q->where('jenis_perawatan', 'penghapusan');
-            })->findOrFail($id);
+            })
+            ->findOrFail($id);
 
         $title = "Detail Barang";
 
