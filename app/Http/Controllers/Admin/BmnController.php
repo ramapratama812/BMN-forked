@@ -74,8 +74,6 @@ class BmnController extends Controller
             $validated['gambar_ruangan'] = $path;
         }
 
-        BmnRuangan::create($validated);
-
         $ruangan = BmnRuangan::create($validated);
 
         ActivityLogger::catat(
@@ -131,8 +129,6 @@ class BmnController extends Controller
             BmnBarang::where('ruangan', $namaLama)->update(['ruangan' => $namaBaru]);
         }
 
-        $ruangan->update(['nama_ruangan' => $request->nama_ruangan]);
-
         ActivityLogger::catat(
             'Edit',
             'Ruangan',
@@ -145,6 +141,7 @@ class BmnController extends Controller
     public function ruanganDestroy($uuid)
     {
         $ruangan = BmnRuangan::where('uuid', $uuid)->firstOrFail();
+        $namaRuangan = $ruangan->nama_ruangan;
 
         // Hapus gambar jika ada
         if ($ruangan->gambar_ruangan && Storage::disk('public')->exists($ruangan->gambar_ruangan)) {
@@ -152,7 +149,14 @@ class BmnController extends Controller
         }
 
         $ruangan->delete();
-                return redirect()->back()->with('success', 'Ruangan berhasil dihapus.');
+
+        ActivityLogger::catat(
+            'Hapus',
+            'Ruangan',
+            'Menghapus ruangan "' . $namaRuangan . '"'
+        );
+
+        return redirect()->back()->with('success', 'Ruangan berhasil dihapus.');
     }
 
     /**
@@ -171,18 +175,6 @@ class BmnController extends Controller
         }
 
         return response()->json(['success' => false]);
-
-
-        $namaRuangan = $ruangan->nama_ruangan;
-        $ruangan->delete();
-
-        ActivityLogger::catat(
-            'Hapus',
-            'Ruangan',
-            'Menghapus ruangan "' . $namaRuangan . '"'
-        );
-
-        return redirect()->back()->with('success', 'Ruangan berhasil dihapus.');
     }
 
     public function ruanganSearch(Request $request)
@@ -211,8 +203,6 @@ class BmnController extends Controller
         ]);
 
         $validated['uuid'] = Str::uuid();
-        BmnKategori::create($validated);
-
         $kategori = BmnKategori::create($validated);
 
         ActivityLogger::catat(
@@ -249,8 +239,6 @@ class BmnController extends Controller
             BmnBarang::where('kategori', $namaLama)->update(['kategori' => $namaBaru]);
         }
 
-        $kategori->update(['nama_kategori' => $request->nama_kategori]);
-
         ActivityLogger::catat(
             'Edit',
             'Kategori',
@@ -262,8 +250,6 @@ class BmnController extends Controller
 
     public function kategoriDestroy($uuid)
     {
-        BmnKategori::where('uuid', $uuid)->delete();
-
         $kategori = BmnKategori::where('uuid', $uuid)->firstOrFail();
         $namaKategori = $kategori->nama_kategori;
         $kategori->delete();
@@ -384,8 +370,6 @@ class BmnController extends Controller
         ]);
 
         $validated['uuid'] = Str::uuid();
-        Pengguna::create($validated);
-
         $pengguna = Pengguna::create($validated);
 
         ActivityLogger::catat(
@@ -426,8 +410,6 @@ class BmnController extends Controller
 
     public function penggunaDestroy($uuid)
     {
-        Pengguna::where('uuid', $uuid)->delete();
-
         $pengguna = Pengguna::where('uuid', $uuid)->firstOrFail();
         $namaPengguna = $pengguna->nama;
         $pengguna->delete();
@@ -469,8 +451,6 @@ class BmnController extends Controller
         ]);
 
         $validated['uuid'] = Str::uuid();
-        UnitKerja::create($validated);
-
         $unitKerja = UnitKerja::create($validated);
 
         ActivityLogger::catat(
@@ -507,8 +487,6 @@ class BmnController extends Controller
             BmnBarang::where('unit_kerja', $namaLama)->update(['unit_kerja' => $namaBaru]);
         }
 
-        $unit_kerja->update($validated);
-
         ActivityLogger::catat(
             'Edit',
             'Unit Kerja',
@@ -520,7 +498,6 @@ class BmnController extends Controller
 
     public function unitKerjaDestroy($uuid)
     {
-        UnitKerja::where('uuid', $uuid)->delete();
         $unit_kerja = UnitKerja::where('uuid', $uuid)->firstOrFail();
         $namaUnitKerja = $unit_kerja->nama_unit_kerja;
         $unit_kerja->delete();
@@ -691,8 +668,6 @@ class BmnController extends Controller
         Storage::disk('public')->makeDirectory('bmn/qrcode');
         Storage::disk('public')->put($qrPath, $qrWriter->writeString($scanUrl));
         $validated['qr_code'] = $qrPath;
-
-        BmnBarang::create($validated);
 
         $barang = BmnBarang::create($validated);
 
