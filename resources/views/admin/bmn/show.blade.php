@@ -213,14 +213,30 @@
                         </div>
 
                         <div class="relative group rounded-[2.2rem] overflow-hidden bg-slate-100 dark:bg-slate-900 aspect-video md:aspect-[21/8] border border-slate-100 dark:border-slate-700">
-                            @if ($barang->posisi)
-                                <img src="{{ asset('storage/' . $barang->posisi) }}" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105">
+                            @php
+                                $fotoTitikLokasi = $barang->posisi
+                                    ?? ($ruanganData?->gambar_ruangan ?? null);
+                                $isFromRuangan = !$barang->posisi && $fotoTitikLokasi;
+                            @endphp
+
+                            @if ($fotoTitikLokasi)
+                                <img src="{{ asset('storage/' . $fotoTitikLokasi) }}" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105">
                                 <div class="absolute inset-0 bg-gradient-to-t from-[#1b365d]/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-end p-8">
                                     <p class="text-white text-xs font-bold flex items-center gap-2 tracking-widest uppercase">
                                         <span class="material-symbols-outlined text-sm">verified</span>
-                                        Dokumentasi Titik Lokasi Statis
+                                        @if ($isFromRuangan)
+                                            Foto Ruangan: {{ $barang->ruangan }}
+                                        @else
+                                            Dokumentasi Titik Lokasi Statis
+                                        @endif
                                     </p>
                                 </div>
+                                @if ($isFromRuangan)
+                                    <div class="absolute top-4 right-4 bg-amber-500/90 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full flex items-center gap-1 shadow">
+                                        <span class="material-symbols-outlined text-xs">apartment</span>
+                                        Foto dari Ruangan
+                                    </div>
+                                @endif
                             @else
                                 <div class="flex flex-col items-center justify-center h-full text-slate-300 gap-3">
                                     <span class="material-symbols-outlined text-6xl opacity-20">not_listed_location</span>

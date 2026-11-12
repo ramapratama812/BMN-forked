@@ -129,6 +129,26 @@ class BmnController extends Controller
             BmnBarang::where('ruangan', $namaLama)->update(['ruangan' => $namaBaru]);
         }
 
+        // Cascade: jika gambar ruangan baru ditambahkan, isi posisi barang
+        // yang tertaut pada ruangan ini dan belum memiliki foto posisi sendiri.
+        if ($request->hasFile('gambar_ruangan') && isset($updateData['gambar_ruangan'])) {
+            $newGambarPath = $updateData['gambar_ruangan'];
+            $ruanganNamaBaru = $namaBaru; // nama ruangan setelah update
+
+            $barangsWithoutPosisi = BmnBarang::where('ruangan', $ruanganNamaBaru)
+                ->whereNull('posisi')
+                ->get();
+
+            foreach ($barangsWithoutPosisi as $b) {
+                // Salin file agar tiap barang punya copy independen
+                $ext      = pathinfo($newGambarPath, PATHINFO_EXTENSION);
+                $copyName = time() . '_' . $b->id . '_posisi_ruangan.' . $ext;
+                $copyPath = 'bmn/posisi/' . $copyName;
+                Storage::disk('public')->copy($newGambarPath, $copyPath);
+                $b->update(['posisi' => $copyPath]);
+            }
+        }
+
         ActivityLogger::catat(
             'Edit',
             'Ruangan',
@@ -682,31 +702,38 @@ class BmnController extends Controller
     }
 
     public function show($ruangan, $id)
-{
-    // Load semua perawatan terkait untuk pengecekan status
-    $barang = BmnBarang::with('perawatan')->findOrFail($id);
+    {
+        // Load semua perawatan terkait untuk pengecekan status
+        $barang = BmnBarang::with('perawatan')->findOrFail($id);
 
-    $title = 'Detail Barang - ' . ucfirst($ruangan);
+        $title = 'Detail Barang - ' . ucfirst($ruangan);
 
-    // Cek apakah ada rencana penghapusan
-    $isRencanaPenghapusan = $barang->perawatan
-        ->where('jenis_perawatan', 'rencana_penghapusan')
-        ->isNotEmpty();
+        // Cek apakah ada rencana penghapusan
+        $isRencanaPenghapusan = $barang->perawatan
+            ->where('jenis_perawatan', 'rencana_penghapusan')
+            ->isNotEmpty();
 
-    // Cek maintenance (perbaikan biasa)
-    $cek_perawatan = $barang->perawatan()
-    ->where('status', '!=', 'selesai')
-    ->where('jenis_perawatan', '!=', 'rencana_penghapusan')
-    ->exists();
+        // Cek maintenance (perbaikan biasa)
+        $cek_perawatan = $barang->perawatan()
+            ->where('status', '!=', 'selesai')
+            ->where('jenis_perawatan', '!=', 'rencana_penghapusan')
+            ->exists();
 
-    $cek_laporan = \App\Models\LaporanKerusakan::where('barang_id', $id)
-        ->whereIn('status', ['disetujui', 'proses'])
-        ->exists();
+        $cek_laporan = \App\Models\LaporanKerusakan::where('barang_id', $id)
+            ->whereIn('status', ['disetujui', 'proses'])
+            ->exists();
 
-    $sedang_maintenance = $cek_perawatan || $cek_laporan;
+        $sedang_maintenance = $cek_perawatan || $cek_laporan;
 
-    return view('admin.bmn.show', compact('barang', 'ruangan', 'title', 'sedang_maintenance', 'isRencanaPenghapusan'));
-}
+        // Ambil data ruangan untuk fallback foto posisi
+        $ruanganData = BmnRuangan::where('nama_ruangan', $barang->ruangan)->first();
+
+        return view('admin.bmn.show', compact(
+            'barang', 'ruangan', 'title',
+            'sedang_maintenance', 'isRencanaPenghapusan',
+            'ruanganData'
+        ));
+    }
 
     public function edit($ruangan, $id)
     {
