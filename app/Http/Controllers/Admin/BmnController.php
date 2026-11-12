@@ -76,6 +76,14 @@ class BmnController extends Controller
 
         BmnRuangan::create($validated);
 
+        $ruangan = BmnRuangan::create($validated);
+
+        ActivityLogger::catat(
+            'Tambah',
+            'Ruangan',
+            'Menambahkan ruangan "' . $ruangan->nama_ruangan . '"'
+        );
+
         return redirect()->back()->with('success', 'Ruangan berhasil ditambahkan.');
     }
 
@@ -123,6 +131,14 @@ class BmnController extends Controller
             BmnBarang::where('ruangan', $namaLama)->update(['ruangan' => $namaBaru]);
         }
 
+        $ruangan->update(['nama_ruangan' => $request->nama_ruangan]);
+
+        ActivityLogger::catat(
+            'Edit',
+            'Ruangan',
+            'Mengubah ruangan "' . $namaLama . '" menjadi "' . $ruangan->nama_ruangan . '"'
+        );
+
         return response()->json(['success' => true]);
     }
 
@@ -136,7 +152,7 @@ class BmnController extends Controller
         }
 
         $ruangan->delete();
-        return redirect()->back()->with('success', 'Ruangan berhasil dihapus.');
+                return redirect()->back()->with('success', 'Ruangan berhasil dihapus.');
     }
 
     /**
@@ -155,6 +171,18 @@ class BmnController extends Controller
         }
 
         return response()->json(['success' => false]);
+
+
+        $namaRuangan = $ruangan->nama_ruangan;
+        $ruangan->delete();
+
+        ActivityLogger::catat(
+            'Hapus',
+            'Ruangan',
+            'Menghapus ruangan "' . $namaRuangan . '"'
+        );
+
+        return redirect()->back()->with('success', 'Ruangan berhasil dihapus.');
     }
 
     public function ruanganSearch(Request $request)
@@ -185,6 +213,14 @@ class BmnController extends Controller
         $validated['uuid'] = Str::uuid();
         BmnKategori::create($validated);
 
+        $kategori = BmnKategori::create($validated);
+
+        ActivityLogger::catat(
+            'Tambah',
+            'Kategori',
+            'Menambahkan kategori "' . $kategori->nama_kategori . '"'
+        );
+
         return redirect()->back()->with('success', 'Kategori berhasil ditambahkan.');
     }
 
@@ -213,12 +249,31 @@ class BmnController extends Controller
             BmnBarang::where('kategori', $namaLama)->update(['kategori' => $namaBaru]);
         }
 
+        $kategori->update(['nama_kategori' => $request->nama_kategori]);
+
+        ActivityLogger::catat(
+            'Edit',
+            'Kategori',
+            'Mengubah kategori "' . $namaLama . '" menjadi "' . $kategori->nama_kategori . '"'
+        );
+
         return response()->json(['success' => true]);
     }
 
     public function kategoriDestroy($uuid)
     {
         BmnKategori::where('uuid', $uuid)->delete();
+
+        $kategori = BmnKategori::where('uuid', $uuid)->firstOrFail();
+        $namaKategori = $kategori->nama_kategori;
+        $kategori->delete();
+
+        ActivityLogger::catat(
+            'Hapus',
+            'Kategori',
+            'Menghapus kategori "' . $namaKategori . '"'
+        );
+
         return redirect()->back()->with('success', 'Kategori berhasil dihapus.');
     }
 
@@ -247,7 +302,7 @@ class BmnController extends Controller
             'nama_jenis_kerusakan.unique'   => 'Nama jenis kerusakan sudah terdaftar, gunakan nama lain.',
         ]);
 
-        BmnJenisKerusakan::create([
+        $jenisKerusakan = BmnJenisKerusakan::create([
             'nama_jenis_kerusakan' => $request->nama_jenis_kerusakan
         ]);
 
@@ -291,6 +346,17 @@ class BmnController extends Controller
     public function jenisKerusakanDestroy($uuid)
     {
         BmnJenisKerusakan::where('uuid', $uuid)->delete();
+
+        $data = BmnJenisKerusakan::where('uuid', $uuid)->firstOrFail();
+        $namaJenisKerusakan = $data->nama_jenis_kerusakan;
+        $data->delete();
+
+        ActivityLogger::catat(
+            'Hapus',
+            'Jenis Kerusakan',
+            'Menghapus jenis kerusakan "' . $namaJenisKerusakan . '"'
+        );
+
         return redirect()->back()->with('success', 'Data berhasil dihapus.');
     }
 
@@ -319,6 +385,14 @@ class BmnController extends Controller
 
         $validated['uuid'] = Str::uuid();
         Pengguna::create($validated);
+
+        $pengguna = Pengguna::create($validated);
+
+        ActivityLogger::catat(
+            'Tambah',
+            'Pengguna',
+            'Menambahkan pengguna "' . $pengguna->nama . '"'
+        );
 
         return redirect()->back()->with('success', 'Pengguna berhasil ditambahkan.');
     }
@@ -353,6 +427,17 @@ class BmnController extends Controller
     public function penggunaDestroy($uuid)
     {
         Pengguna::where('uuid', $uuid)->delete();
+
+        $pengguna = Pengguna::where('uuid', $uuid)->firstOrFail();
+        $namaPengguna = $pengguna->nama;
+        $pengguna->delete();
+
+        ActivityLogger::catat(
+            'Hapus',
+            'Pengguna',
+            'Menghapus pengguna "' . $namaPengguna . '"'
+        );
+
         return redirect()->back()->with('success', 'Data pengguna berhasil dihapus.');
     }
 
@@ -386,6 +471,14 @@ class BmnController extends Controller
         $validated['uuid'] = Str::uuid();
         UnitKerja::create($validated);
 
+        $unitKerja = UnitKerja::create($validated);
+
+        ActivityLogger::catat(
+            'Tambah',
+            'Unit Kerja',
+            'Menambahkan unit kerja "' . $unitKerja->nama_unit_kerja . '"'
+        );
+
         return redirect()->back()->with('success', 'Unit Kerja berhasil ditambahkan.');
     }
 
@@ -414,12 +507,30 @@ class BmnController extends Controller
             BmnBarang::where('unit_kerja', $namaLama)->update(['unit_kerja' => $namaBaru]);
         }
 
+        $unit_kerja->update($validated);
+
+        ActivityLogger::catat(
+            'Edit',
+            'Unit Kerja',
+            'Mengubah unit kerja "' . $namaLama . '" menjadi "' . $unit_kerja->nama_unit_kerja . '"'
+        );
+
         return response()->json(['success' => true]);
     }
 
     public function unitKerjaDestroy($uuid)
     {
         UnitKerja::where('uuid', $uuid)->delete();
+        $unit_kerja = UnitKerja::where('uuid', $uuid)->firstOrFail();
+        $namaUnitKerja = $unit_kerja->nama_unit_kerja;
+        $unit_kerja->delete();
+
+        ActivityLogger::catat(
+            'Hapus',
+            'Unit Kerja',
+            'Menghapus unit kerja "' . $namaUnitKerja . '"'
+        );
+
         return redirect()->back()->with('success', 'Unit kerja berhasil dihapus.');
     }
 
@@ -582,6 +693,14 @@ class BmnController extends Controller
         $validated['qr_code'] = $qrPath;
 
         BmnBarang::create($validated);
+
+        $barang = BmnBarang::create($validated);
+
+        ActivityLogger::catat(
+            'Tambah',
+            'Barang',
+            'Menambahkan barang "' . $barang->nama_barang . '"'
+        );
 
         return redirect()->route('barang.bmn_index')
             ->with('success', 'Barang berhasil ditambahkan ke ' . $finalRuangan);
@@ -750,30 +869,29 @@ class BmnController extends Controller
 
     public function destroy($ruangan, $id)
     {
-    $barang = BmnBarang::findOrFail($id);
+        $barang = BmnBarang::findOrFail($id);
+        $namaBarang = $barang->nama_barang;
 
+        if ($barang->foto && Storage::disk('public')->exists($barang->foto)) {
+            Storage::disk('public')->delete($barang->foto);
+        }
+        if ($barang->posisi && Storage::disk('public')->exists($barang->posisi)) {
+            Storage::disk('public')->delete($barang->posisi);
+        }
+        if ($barang->qr_code && Storage::disk('public')->exists($barang->qr_code)) {
+            Storage::disk('public')->delete($barang->qr_code);
+        }
 
-    if ($barang->foto && Storage::disk('public')->exists($barang->foto)) {
-    Storage::disk('public')->delete($barang->foto);
-    }
-    if ($barang->posisi && Storage::disk('public')->exists($barang->posisi)) {
-    Storage::disk('public')->delete($barang->posisi);
-    }
-    if ($barang->qr_code && Storage::disk('public')->exists($barang->qr_code)) {
-    Storage::disk('public')->delete($barang->qr_code);
-    }
+        $barang->delete();
 
-    $namaBarang = $barang->nama_barang;
-    $barang->delete();
+        ActivityLogger::catat(
+            'Hapus',
+            'Barang',
+            'Menghapus barang "' . $namaBarang . '"'
+        );
 
-    ActivityLogger::catat(
-        'Hapus',
-        'Barang',
-        'Menghapus barang "' . $namaBarang . '"'
-    );
-
-    return redirect()->route('barang.bmn_index', $ruangan)
-    ->with('success', 'Barang berhasil dihapus.');
+        return redirect()->route('barang.bmn_index', $ruangan)
+            ->with('success', 'Barang berhasil dihapus.');
     }
 
     public function print($ruangan)

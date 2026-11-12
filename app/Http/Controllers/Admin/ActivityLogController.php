@@ -8,52 +8,64 @@ use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
 {
-   
-public function index(Request $request)
-{
-    $query = ActivityLog::with('user')->latest();
+    public function index(Request $request)
+    {
+        $query = ActivityLog::with('user')->latest();
 
-    // Filter berdasarkan aksi
-    if ($request->filled('aksi')) {
-        $query->where('aksi', $request->aksi);
+        // Pencarian
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $keyword = strtolower($search);
+
+            $variasiAksi = [];
+
+            if (in_array($keyword, ['tambah', 'menambahkan', 'ditambahkan', 'ditambah'])) {
+                $variasiAksi = ['Tambah', 'Menambahkan', 'Ditambahkan'];
+            } elseif (in_array($keyword, ['edit', 'mengubah', 'diubah', 'diedit'])) {
+                $variasiAksi = ['Edit', 'Mengubah', 'Diubah'];
+            } elseif (in_array($keyword, ['hapus', 'menghapus', 'dihapus'])) {
+                $variasiAksi = ['Hapus', 'Menghapus', 'Dihapus'];
+            }
+
+            $query->where(function ($q) use ($search, $variasiAksi) {
+                $q->where('deskripsi', 'LIKE', "%{$search}%")
+                  ->orWhere('modul', 'LIKE', "%{$search}%")
+                  ->orWhere('aksi', 'LIKE', "%{$search}%");
+
+                if (!empty($variasiAksi)) {
+                    $q->orWhereIn('aksi', $variasiAksi);
+                }
+
+                $q->orWhereHas('user', function ($userQuery) use ($search) {
+                    $userQuery->where('kode_user', 'LIKE', "%{$search}%")
+                              ->orWhere('nama_lengkap', 'LIKE', "%{$search}%");
+                });
+            });
+        }
+
+        // Filter aktivitas
+        if ($request->filled('aksi')) {
+            $aksi = [
+                'Menambahkan' => ['Menambahkan', 'Tambah', 'Ditambahkan'],
+                'Mengubah'    => ['Mengubah', 'Edit', 'Diubah'],
+                'Menghapus'   => ['Menghapus', 'Hapus', 'Dihapus'],
+                'Tambah'      => ['Menambahkan', 'Tambah', 'Ditambahkan'],
+                'Edit'        => ['Mengubah', 'Edit', 'Diubah'],
+                'Hapus'       => ['Menghapus', 'Hapus', 'Dihapus'],
+            ];
+
+            if (isset($aksi[$request->aksi])) {
+                $query->whereIn('aksi', $aksi[$request->aksi]);
+            } else {
+                $query->where('aksi', $request->aksi);
+            }
+        }
+
+        $logs = $query->paginate(15)->withQueryString();
+
+        return view('admin.log-aktivitas.index', [
+            'logs' => $logs,
+            'title' => 'Log Aktivitas',
+        ]);
     }
-
-    // Filter berdasarkan modul
-    if ($request->filled('modul')) {
-        $query->where('modul', $request->modul);
-    }
-
-    // Pencarian
-    if ($request->filled('search')) {
-        $search = $request->search;
-
-        $query->where(function ($q) use ($search) {
-            $q->where('deskripsi', 'like', "%{$search}%")
-              ->orWhere('modul', 'like', "%{$search}%")
-              ->orWhere('aksi', 'like', "%{$search}%")
-              ->orWhereHas('user', function ($userQuery) use ($search) {
-                  $userQuery->where('kode_user', 'like', "%{$search}%");
-              });
-        });
-    }
-
-    $logs = $query->paginate(10)->withQueryString();
-
-    $totalAktivitas = ActivityLog::count();
-
-    $totalModul = ActivityLog::distinct('modul')
-        ->count('modul');
-
-    $moduls = ActivityLog::select('modul')
-        ->distinct()
-        ->orderBy('modul')
-        ->pluck('modul');
-
-    return view('admin.log-aktivitas.index', compact(
-    'logs',
-    'totalAktivitas',
-    'totalModul',
-    'moduls'
-));
-}
 }
