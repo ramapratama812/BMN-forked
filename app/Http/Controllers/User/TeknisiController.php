@@ -99,7 +99,7 @@ class TeknisiController extends Controller
         // Validasi input dan unggahan bukti perbaikan
         $request->validate([
             'deskripsi'        => 'required',
-            'biaya'            => 'required|numeric',
+            'biaya'            => 'required|numeric|min:0|max:9999999999',
             'status_perbaikan' => 'required|in:diperbaiki,tidak_dapat_diperbaiki',
             'foto_bukti'       => 'nullable|array',
             'foto_bukti.*'     => 'image|max:4096'

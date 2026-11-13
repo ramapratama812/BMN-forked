@@ -150,9 +150,22 @@
                         </label>
                         <div class="flex items-center bg-[#f8fafc] border border-[#e2e8f0] rounded-[1rem] overflow-hidden transition-all focus-within:border-[#1b365d] focus-within:ring-4 focus-within:ring-[#1b365d]/10 focus-within:bg-white">
                             <span class="pl-5 pr-2 py-3 text-slate-500 font-bold text-sm select-none border-r border-[#e2e8f0]/50 bg-slate-100/50">Rp</span>
-                            <input type="number" name="biaya" required placeholder="0" min="0"
-                                class="w-full bg-transparent border-none focus:ring-0 p-3.5 text-sm font-medium text-slate-800" style="box-shadow: none;">
+                            {{-- Input tampilan (format rupiah, tidak dikirim ke server) --}}
+                            <input type="text" id="biaya_display" inputmode="numeric"
+                                placeholder="0"
+                                autocomplete="off"
+                                maxlength="17"
+                                class="w-full bg-transparent border-none focus:ring-0 p-3.5 text-sm font-medium text-slate-800"
+                                style="box-shadow: none;">
+                            {{-- Input hidden yang menyimpan nilai numerik bersih --}}
+                            <input type="hidden" id="biaya_raw" name="biaya">
                         </div>
+                        {{-- Pesan error batas maksimal --}}
+                        <p id="biaya_error" class="hidden mt-2 text-xs font-semibold text-red-500 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 inline" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+                            Biaya maksimal adalah Rp 9.999.999.999
+                        </p>
+                        <p class="mt-1.5 text-[11px] text-slate-400">Maksimal: Rp 9.999.999.999 &bull; Isi 0 jika tidak ada biaya</p>
                     </div>
 
                     {{-- Status Hasil Perbaikan (Penambahan Radio Button) --}}
@@ -343,8 +356,79 @@
             document.getElementById('modal-image').src = '';
         }
 
+        // ── Format Rupiah pada field biaya ──────────────────────────────
+        const biayaDisplay = document.getElementById('biaya_display');
+        const biayaRaw     = document.getElementById('biaya_raw');
+        const biayaError   = document.getElementById('biaya_error');
+        const MAX_BIAYA    = 9_999_999_999; // 9,9 miliar
+
+        function formatRupiah(value) {
+            // Hapus semua karakter non-digit
+            const digits = value.replace(/\D/g, '');
+            if (!digits) return '';
+            // Tambah pemisah ribuan
+            return parseInt(digits, 10).toLocaleString('id-ID');
+        }
+
+        function validateBiaya(raw) {
+            const num = parseInt(raw.replace(/\D/g, '') || '0', 10);
+            const valid = num <= MAX_BIAYA;
+            biayaError.classList.toggle('hidden', valid);
+            // Tandai border merah jika error
+            biayaDisplay.closest('div').classList.toggle('border-red-400', !valid);
+            return valid;
+        }
+
+        biayaDisplay.addEventListener('input', function () {
+            const raw     = this.value.replace(/\D/g, '');
+            const numeric = parseInt(raw || '0', 10);
+
+            // Potong jika melebihi batas
+            const capped  = Math.min(numeric, MAX_BIAYA);
+            this.value    = capped > 0 ? capped.toLocaleString('id-ID') : '';
+            biayaRaw.value = capped;
+
+            validateBiaya(this.value);
+        });
+
+        // Saat focus: tampilkan angka saja agar mudah diedit
+        biayaDisplay.addEventListener('focus', function () {
+            const raw = biayaRaw.value || '';
+            this.value = raw > 0 ? raw : '';
+        });
+
+        // Saat blur: tampilkan format rupiah
+        biayaDisplay.addEventListener('blur', function () {
+            const num = parseInt(biayaRaw.value || '0', 10);
+            this.value = num > 0 ? num.toLocaleString('id-ID') : '';
+        });
+
+        // Hanya izinkan angka, backspace, delete, arrow keys
+        biayaDisplay.addEventListener('keydown', function (e) {
+            const allowed = [
+                'Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'
+            ];
+            if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) {
+                e.preventDefault();
+            }
+        });
+
+        // Init: set raw ke 0 jika kosong
+        biayaRaw.value = '0';
+        // ───────────────────────────────────────────────────────────────
+
         function konfirmasiSubmit() {
             const form = document.getElementById('formPerbaikan');
+
+            // Validasi biaya sebelum submit
+            const rawBiaya = parseInt(biayaRaw.value || '0', 10);
+            if (rawBiaya > MAX_BIAYA) {
+                biayaDisplay.focus();
+                return;
+            }
+            // Pastikan biaya_raw terisi sebelum submit
+            if (!biayaRaw.value) biayaRaw.value = '0';
+
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return;
