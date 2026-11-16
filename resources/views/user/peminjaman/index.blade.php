@@ -39,69 +39,76 @@
       <div class="overflow-x-auto shadow-md sm:rounded-lg">
 
         {{-- input data --}}
-        <div class="relative overflow-auto bg-white dark:bg-gray-800 sm:rounded-lg">
-      <div class="flex flex-col items-center justify-between p-4 space-y-3 md:flex-row md:space-y-0 md:space-x-4">
-        <div class="w-full md:w-1/2">
-          <form class="col-span-1" id="form">
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <i class="fa-solid fa-file-lines text-gray-500 dark:text-gray-400"></i>
+        <div class="p-5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-file-signature text-blue-600"></i> Informasi Surat & Waktu Peminjaman
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+            {{-- Kolom Kiri: Nomor Surat Tugas --}}
+            <div>
+              <label for="nomor-surat" class="block mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                Nomor Surat Tugas <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                  <i class="fa-solid fa-file-lines text-sm"></i>
+                </div>
+                <input type="text" id="nomor-surat" name="nomor_surat"
+                  class="w-full pl-10 p-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="Masukkan Nomor Surat Tugas">
               </div>
-              <input type="text" id="nomor-surat" name="nomor_surat"
-                class="w-full pl-10 p-2 text-sm border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-70 dark:text-white"
-                placeholder="Masukkan Surat Tugas">
               @error('nomor_surat')
-                <small class="text-red-500 text-sm"> {{ $message }}</small>
+                <small class="text-red-500 text-sm mt-1 block"> {{ $message }}</small>
               @enderror
             </div>
-          </form>
-        </div>
-        <div
-          class="flex flex-col items-stretch justify-end flex-shrink-0 w-full space-y-2 md:w-auto md:flex-row md:space-y-0 md:items-center md:space-x-3">
-          <div class="flex items-center w-full space-x-3 md:w-auto">
-            <div id="date-range-picker" class="flex items-center">
-              <small class="mx-4 text-gray-500">Dari</small>
+
+            {{-- Kolom Kanan: Tanggal Penggunaan (Mulai) --}}
+            <div>
+              <label for="tanggal-penggunaan" class="block mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                Tanggal Penggunaan (Mulai) <span class="text-red-500">*</span>
+              </label>
               <div class="relative">
-                <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-                  <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
-                  </svg>
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                  <i class="fa-solid fa-calendar-days text-sm"></i>
                 </div>
                 <input id="tanggal-penggunaan" name="start" type="date" readonly
-                  class="w-full pl-10 p-2 text-sm border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  class="w-full pl-10 p-2.5 text-sm border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="Tanggal peminjaman" />
-              </div>
-              <small class="mx-4 text-gray-500">Sampai</small>
-              <div class="relative">
-                <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-                  <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z" />
-                  </svg>
-                </div>
-                <input id="tanggal-kembali" name="end" type="date"
-                  class="w-full pl-10 p-2 text-sm border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                  placeholder="Tanggal pengembalian" onclick="this.showPicker();" />
               </div>
             </div>
 
-            {{-- peruntukan --}}
+            {{-- Kolom Kiri: Peruntukan --}}
             <div>
-              <select id="peruntukan" name="peruntukan"
-                class="w-full p-2 text-sm border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                <option value="" selected>-- Pilih Peruntukan --</option>
-                @foreach ($peruntukanData as $peruntukan)
-                  <option value="{{ $peruntukan->id }}">{{ $peruntukan->peruntukan }}</option>
-                @endforeach
-              </select>
+              <label for="peruntukan" class="block mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                Peruntukan Penggunaan <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
+                <select id="peruntukan" name="peruntukan"
+                  class="w-full p-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                  <option value="" selected>-- Pilih Peruntukan --</option>
+                  @foreach ($peruntukanData as $peruntukan)
+                    <option value="{{ $peruntukan->id }}">{{ $peruntukan->peruntukan }}</option>
+                  @endforeach
+                </select>
+              </div>
+            </div>
+
+            {{-- Kolom Kanan: Tanggal Batas Pengembalian --}}
+            <div>
+              <label for="tanggal-kembali" class="block mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                Tanggal Batas Pengembalian <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                  <i class="fa-solid fa-calendar-check text-sm"></i>
+                </div>
+                <input id="tanggal-kembali" name="end" type="date" onclick="this.showPicker();"
+                  class="w-full pl-10 p-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="Tanggal pengembalian" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
     {{-- Pencarian & Pemilihan Barang Inventaris --}}
     <div class="p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-b border-gray-200 dark:border-gray-700">
@@ -116,15 +123,15 @@
             </div>
             <input type="text" id="search-barang-input"
               class="w-full pl-10 p-2.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-              placeholder="Ketik nama barang, kode barang, nomor seri, merk, atau ruangan..." autocomplete="off">
+              placeholder="Cari nama barang, kode BMN, nomor seri, merk..." autocomplete="off">
           </div>
           <div class="flex gap-2">
             <button type="button" id="btn-search-barang"
-              class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 rounded-lg focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none">
-              <i class="fa-solid fa-search mr-2"></i> Cari
+              class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors shadow-sm focus:outline-none">
+              <i class="fa-solid fa-search mr-2 text-xs"></i> Cari
             </button>
             <button type="button" id="btn-reset-search"
-              class="inline-flex items-center justify-center px-3 py-2.5 text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 focus:outline-none">
+              class="inline-flex items-center justify-center px-3.5 py-2.5 text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 focus:outline-none">
               Reset
             </button>
           </div>
@@ -132,12 +139,12 @@
       </div>
 
       {{-- Kontainer Hasil Pencarian --}}
-      <div id="search-results-container" class="hidden mt-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div id="search-results-container" class="hidden mt-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
         <div class="px-4 py-2.5 bg-gray-100 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center text-xs text-gray-600 dark:text-gray-300 font-medium">
-          <span>Hasil Pencarian</span>
-          <span id="search-results-count"></span>
+          <span class="flex items-center gap-1.5"><i class="fa-solid fa-list-ul text-blue-600"></i> Hasil Pencarian</span>
+          <span id="search-results-count" class="font-normal text-gray-500 dark:text-gray-400"></span>
         </div>
-        <div id="search-results-list" class="max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+        <div id="search-results-list" class="max-h-80 md:max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
           {{-- Item diisi via JavaScript --}}
         </div>
       </div>
@@ -204,21 +211,37 @@
           @endif
         </tbody>
       </table>
+
+      {{-- Empty State (Tampil jika belum ada barang yang ditambahkan) --}}
+      <div id="table-empty-state" class="{{ (!session('borrowed_items') || count(session('borrowed_items')) === 0) ? '' : 'hidden' }} p-8 text-center bg-gray-50/50 dark:bg-gray-800/40 border-t border-dashed border-gray-200 dark:border-gray-700">
+        <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl shadow-inner">
+          <i class="fa-solid fa-cart-shopping"></i>
+        </div>
+        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          Belum Ada Barang Dipilih
+        </h4>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto leading-relaxed">
+          Ketik nama barang, kode BMN, atau nomor seri pada kolom pencarian di atas, lalu klik tombol
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+            <i class="fa-solid fa-plus mr-1"></i> Pilih
+          </span> untuk memasukkannya ke daftar.
+        </p>
+      </div>
     </div>
 
       </div>
 
       {{-- button peminjaman --}}
-      <div class="flex justify-center space-x-2 mt-4 mb-16">
-        <a href="{{ route('user.option') }}">
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6 mb-16">
+        <a href="{{ route('user.option') }}" class="w-full sm:w-auto">
           <button type="button"
-            class="text-white bg-blue-900 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
-            Kembali
+            class="w-full sm:w-auto inline-flex items-center justify-center text-gray-700 bg-white hover:bg-gray-100 hover:text-gray-900 border border-gray-300 focus:ring-4 focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 transition-colors dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-gray-700 focus:outline-none">
+            <i class="fa-solid fa-arrow-left mr-2 text-xs"></i> Kembali
           </button>
         </a>
         <button data-modal-target="save-modal" data-modal-toggle="save-modal" type="button"
-          class="text-white bg-blue-900 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
-          Simpan
+          class="w-full sm:w-auto inline-flex items-center justify-center text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-6 py-2.5 shadow-sm hover:shadow transition-all dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 focus:outline-none">
+          <i class="fa-solid fa-check mr-2 text-xs"></i> Simpan
         </button>
       </div>
     </div>
@@ -905,6 +928,7 @@
 
         tbody.appendChild(tr);
         this.updateRowNumbers();
+        this.toggleEmptyState();
       },
 
       removeItem(uuid) {
@@ -924,6 +948,7 @@
                 this.updateRowNumbers();
               }
               SearchManager.updateItemStateAfterRemoval(uuid);
+              this.toggleEmptyState();
             }
           })
           .catch(console.error);
@@ -933,6 +958,17 @@
         Array.from(tbody.children).forEach((row, index) => {
           row.querySelector('td p').textContent = index + 1;
         });
+      },
+      toggleEmptyState() {
+        const emptyState = document.getElementById('table-empty-state');
+        if (!emptyState) return;
+
+        const items = document.querySelectorAll('table tbody tr[data-item-id]');
+        if (items.length === 0) {
+          emptyState.classList.remove('hidden');
+        } else {
+          emptyState.classList.add('hidden');
+        }
       }
     };
 
@@ -1004,9 +1040,9 @@
         if (count) count.textContent = 'Mencari...';
         if (list) {
           list.innerHTML = `
-            <div class="p-4 text-center text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center">
-              <div class="w-4 h-4 border-2 border-t-blue-500 border-gray-300 rounded-full animate-spin mr-2"></div>
-              Memuat data barang dari database...
+            <div class="p-8 text-center text-sm text-gray-500 dark:text-gray-400 flex flex-col items-center justify-center gap-2">
+              <div class="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <p class="font-medium text-xs text-gray-600 dark:text-gray-300">Mencari barang di database...</p>
             </div>
           `;
         }
@@ -1037,8 +1073,10 @@
           if (count) count.textContent = 'Error';
           if (list) {
             list.innerHTML = `
-              <div class="p-4 text-center text-sm text-red-500">
-                Terjadi kesalahan saat mencari barang. Silakan coba lagi.
+              <div class="p-6 text-center text-xs text-red-600 dark:text-red-400 flex flex-col items-center justify-center gap-1.5">
+                <i class="fa-solid fa-circle-exclamation text-2xl text-red-500 mb-1"></i>
+                <p class="font-semibold text-sm">Terjadi Kesalahan</p>
+                <p class="text-gray-500 dark:text-gray-400">Gagal mengambil data barang dari server. Silakan coba lagi.</p>
               </div>
             `;
           }
@@ -1057,8 +1095,14 @@
         if (items.length === 0) {
           if (count) count.textContent = '0 barang';
           list.innerHTML = `
-            <div class="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
-              Tidak ada barang ditemukan untuk kata kunci tersebut.
+            <div class="p-8 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center justify-center">
+              <div class="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center text-gray-400 dark:text-gray-500 mb-2.5 text-xl">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </div>
+              <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Barang Tidak Ditemukan</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs leading-relaxed">
+                Periksa kembali ejaan kata kunci nama barang, kode BMN, nomor seri, atau ruangan.
+              </p>
             </div>
           `;
           return;
@@ -1084,32 +1128,32 @@
 
           let badgeStatus = '';
           if (!isAvailable) {
-            badgeStatus = `<span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-red-900 dark:text-red-300">Tidak Tersedia</span>`;
+            badgeStatus = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800"><i class="fa-solid fa-circle-xmark mr-1 text-[10px]"></i> Tidak Tersedia</span>`;
           } else {
             const limitText = item.sisa_limit !== null && item.sisa_limit !== undefined ? ` (${Utils.escapeHtml(item.sisa_limit)})` : '';
-            badgeStatus = `<span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Tersedia${limitText}</span>`;
+            badgeStatus = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-200 dark:border-green-800"><i class="fa-solid fa-circle-check mr-1 text-[10px]"></i> Tersedia${limitText}</span>`;
           }
 
           let actionBtn = '';
           if (isSelected) {
             actionBtn = `
               <button type="button" disabled
-                class="px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed dark:bg-gray-700 dark:text-gray-400">
-                <i class="fa-solid fa-check mr-1"></i> Sudah Dipilih
+                class="w-full sm:w-auto inline-flex items-center justify-center px-3.5 py-2 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600">
+                <i class="fa-solid fa-check mr-1.5 text-green-600 dark:text-green-400 text-xs"></i> Sudah Dipilih
               </button>
             `;
           } else if (!isAvailable) {
             actionBtn = `
               <button type="button" disabled
-                class="px-3 py-1.5 text-xs font-medium text-red-400 bg-red-50 border border-red-200 rounded-lg cursor-not-allowed dark:bg-gray-700">
-                Tidak Dapat Dipinjam
+                class="w-full sm:w-auto inline-flex items-center justify-center px-3.5 py-2 text-xs font-medium text-red-500 bg-red-50 border border-red-200 rounded-lg cursor-not-allowed dark:bg-gray-700/60 dark:text-red-400 dark:border-red-900/40">
+                <i class="fa-solid fa-ban mr-1.5 text-xs"></i> Tidak Dapat Dipinjam
               </button>
             `;
           } else {
             actionBtn = `
               <button type="button" onclick="SearchManager.selectItem('${safeUuid}')" id="btn-select-${safeUuid}"
-                class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg focus:ring-2 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700">
-                <i class="fa-solid fa-plus mr-1"></i> Pilih
+                class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 rounded-lg shadow-sm hover:shadow transition-all dark:bg-blue-600 dark:hover:bg-blue-700">
+                <i class="fa-solid fa-plus mr-1.5 text-xs"></i> Pilih
               </button>
             `;
           }
@@ -1137,7 +1181,7 @@
             }
 
             unavailableNotice = `
-              <div class="mt-2.5 flex items-start gap-2 p-2.5 rounded-lg border text-xs font-medium ${noticeColorClass}">
+              <div class="mt-2.5 flex items-start gap-2 p-2.5 rounded-lg border text-xs font-medium leading-relaxed ${noticeColorClass}">
                 <i class="fa-solid ${noticeIcon} mt-0.5 shrink-0"></i>
                 <div class="flex-1">
                   <span>${Utils.escapeHtml(item.unavailable_reason)}</span>
@@ -1147,21 +1191,21 @@
           }
 
           html += `
-            <div class="p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 flex flex-col justify-between gap-1" id="search-item-${safeUuid}">
+            <div class="p-3.5 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors flex flex-col justify-between gap-1 ${!isAvailable ? 'bg-gray-50/60 dark:bg-gray-800/60' : ''}" id="search-item-${safeUuid}">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-1 flex-wrap">
-                    <span class="font-semibold text-gray-900 dark:text-white text-sm">${safeName}</span>
-                    <span class="bg-blue-100 text-blue-800 text-xs font-mono px-2 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">${safeKode}</span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span class="font-bold text-gray-900 dark:text-white text-sm sm:text-base leading-snug">${safeName}</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800">${safeKode}</span>
                     ${badgeStatus}
                   </div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-4">
-                    <span><strong>Merk:</strong> ${safeMerk}</span>
-                    <span><strong>No Seri:</strong> ${safeSerial}</span>
-                    ${item.ruangan && item.ruangan !== '-' ? `<span><strong>Ruangan:</strong> ${safeRuangan}</span>` : ''}
+                  <div class="text-xs text-gray-600 dark:text-gray-300 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span><i class="fa-solid fa-tag text-gray-400 dark:text-gray-500 mr-1 text-[11px]"></i><strong>Merk:</strong> ${safeMerk}</span>
+                    <span><i class="fa-solid fa-barcode text-gray-400 dark:text-gray-500 mr-1 text-[11px]"></i><strong>No Seri:</strong> ${safeSerial}</span>
+                    ${item.ruangan && item.ruangan !== '-' ? `<span><i class="fa-solid fa-location-dot text-gray-400 dark:text-gray-500 mr-1 text-[11px]"></i><strong>Ruangan:</strong> ${safeRuangan}</span>` : ''}
                   </div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                   ${actionBtn}
                 </div>
               </div>
@@ -1177,7 +1221,7 @@
         const btn = document.getElementById(`btn-select-${uuid}`);
         if (btn) {
           btn.disabled = true;
-          btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Memproses...`;
+          btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1.5 text-xs"></i> Memproses...`;
         }
 
         try {
@@ -1198,8 +1242,8 @@
             Utils.showToast('toast-success-add', result.message || 'Barang berhasil ditambahkan.');
 
             if (btn) {
-              btn.className = 'px-3 py-1.5 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed dark:bg-gray-700 dark:text-gray-400';
-              btn.innerHTML = `<i class="fa-solid fa-check mr-1"></i> Sudah Dipilih`;
+              btn.className = 'w-full sm:w-auto inline-flex items-center justify-center px-3.5 py-2 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-300 rounded-lg cursor-not-allowed dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600';
+              btn.innerHTML = `<i class="fa-solid fa-check mr-1.5 text-green-600 dark:text-green-400 text-xs"></i> Sudah Dipilih`;
               btn.disabled = true;
               btn.removeAttribute('onclick');
             }
@@ -1207,7 +1251,7 @@
             Utils.showToast('toast-danger-2', result.message || 'Gagal menambahkan barang.');
             if (btn) {
               btn.disabled = false;
-              btn.innerHTML = `<i class="fa-solid fa-plus mr-1"></i> Pilih`;
+              btn.innerHTML = `<i class="fa-solid fa-plus mr-1.5 text-xs"></i> Pilih`;
             }
           }
 
@@ -1216,7 +1260,7 @@
           Utils.showToast('toast-danger-2', 'Terjadi kesalahan saat menambahkan barang.');
           if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `<i class="fa-solid fa-plus mr-1"></i> Pilih`;
+            btn.innerHTML = `<i class="fa-solid fa-plus mr-1.5 text-xs"></i> Pilih`;
           }
         }
       },
@@ -1229,8 +1273,8 @@
         if (btnContainer) {
           btnContainer.innerHTML = `
             <button type="button" onclick="SearchManager.selectItem('${safeUuid}')" id="btn-select-${safeUuid}"
-              class="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg focus:ring-2 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700">
-              <i class="fa-solid fa-plus mr-1"></i> Pilih
+              class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 rounded-lg shadow-sm hover:shadow transition-all dark:bg-blue-600 dark:hover:bg-blue-700">
+              <i class="fa-solid fa-plus mr-1.5 text-xs"></i> Pilih
             </button>
           `;
         }
@@ -1459,6 +1503,7 @@
       DraftManager.init();
       LoanManager.initDateInputs();
       LoanManager.initSaveValidation();
+      ItemManager.toggleEmptyState();
 
       // Global helper untuk memicu modal buka/tutup
       document.querySelectorAll('[data-modal-target]').forEach(trigger => {
