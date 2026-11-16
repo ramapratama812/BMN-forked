@@ -154,25 +154,31 @@ class UserController extends Controller
 	 */
 	public function update(Request $request, string $uuid)
 	{
+		$isAdminRole = in_array($request->role, ['superadmin', 'admin']);
+
 		$request->validate(
 			[
 				'nama_lengkap' => 'required',
-				'email' => 'required|email',
-				'nomor_hp' => 'required|numeric',
-				'role' => 'required',
-				'jabatan_id' => 'required',
-				'nip' => 'required|numeric',
+				'email'        => 'required|email',
+				'nomor_hp'     => 'required|numeric',
+				'role'         => 'required',
+				'jabatan_id'   => 'required',
+				'nip'          => 'required|numeric',
+				// Password wajib diisi hanya jika role adalah superadmin/admin
+				'password'     => $isAdminRole ? 'required|string|min:6' : 'nullable',
 			],
 			[
 				'nama_lengkap.required' => 'Nama Lengkap wajib diisi.',
-				'email.required' => 'Email wajib diisi.',
-				'email.email' => 'Email tidak valid.',
-				'nomor_hp.required' => 'Nomor HP wajib diisi.',
-				'nomor_hp.numeric' => 'Nomor HP harus berupa angka.',
-				'role.required' => 'Role wajib diisi.',
-				'jabatan_id.required' => 'Jabatan wajib diisi.',
-				'nip.required' => 'NIP wajib diisi.',
-				'nip.numeric' => 'NIP harus berupa angka.',
+				'email.required'        => 'Email wajib diisi.',
+				'email.email'           => 'Email tidak valid.',
+				'nomor_hp.required'     => 'Nomor HP wajib diisi.',
+				'nomor_hp.numeric'      => 'Nomor HP harus berupa angka.',
+				'role.required'         => 'Role wajib diisi.',
+				'jabatan_id.required'   => 'Jabatan wajib diisi.',
+				'nip.required'          => 'NIP wajib diisi.',
+				'nip.numeric'           => 'NIP harus berupa angka.',
+				'password.required'     => 'Password wajib diisi untuk role Superadmin / Admin.',
+				'password.min'          => 'Password minimal 6 karakter.',
 			]
 		);
 
@@ -183,20 +189,30 @@ class UserController extends Controller
 			if ($user->foto && $user->foto !== 'default.jpeg') {
 				Storage::disk('public')->delete('uploads/foto_user/' . $user->foto);
 			}
-			$file = $request->file('foto');
+			$file     = $request->file('foto');
 			$filename = $user->foto ?? time() . '.' . $file->getClientOriginalExtension();
 			$file->storeAs('uploads/foto_user', $filename, 'public');
 		}
 
-		$user->update([
+		$updateData = [
 			'nama_lengkap' => $request->nama_lengkap,
-			'email' => $request->email,
-			'nomor_hp' => $request->nomor_hp,
-			'role' => $request->role,
-			'jabatan_id' => $request->jabatan_id,
-			'nip' => $request->nip,
-			'foto' => $filename
-		]);
+			'email'        => $request->email,
+			'nomor_hp'     => $request->nomor_hp,
+			'role'         => $request->role,
+			'jabatan_id'   => $request->jabatan_id,
+			'nip'          => $request->nip,
+			'foto'         => $filename,
+		];
+
+		// Simpan/perbarui password hanya jika role membutuhkannya
+		if ($isAdminRole && $request->filled('password')) {
+			$updateData['password'] = Hash::make($request->password);
+		} elseif (!$isAdminRole) {
+			// Hapus password jika role bukan admin/superadmin
+			$updateData['password'] = null;
+		}
+
+		$user->update($updateData);
 
 		notify()->success('User Berhasil Diupdate');
 		return redirect()->route('users.index');
