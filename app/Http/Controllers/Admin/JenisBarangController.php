@@ -53,7 +53,7 @@ class JenisBarangController extends Controller
 			'jenis_barang' => $request->jenis_barang
 		]);
 
-		notify()->success('Data Berhasil Disimpan');
+		toastr()->success('Data Berhasil Disimpan');
 		return redirect()->route('jenis-barang.index');
 	}
 
@@ -84,7 +84,7 @@ class JenisBarangController extends Controller
 		$data = $request->except(['_token', '_method']);
 
 		JenisBarang::where('uuid', $uuid)->update($data);
-		notify()->success('Data Berhasil Diperbarui');
+		toastr()->success('Data Berhasil Diperbarui');
 		return response()->json(['success' => true]);
 	}
 
@@ -99,11 +99,11 @@ class JenisBarangController extends Controller
 			$isRelate = Barang::where('jenis_barang_id', $jenisBarang->id)->first();
 
 			if ($isRelate) {
-				notify()->error('Jenis barang ini tidak dapat dihapus karena masih digunakan pada data barang lainnya.');
+				toastr()->error('Jenis barang ini tidak dapat dihapus karena masih digunakan pada data barang lainnya.');
 				return redirect()->route('jenis-barang.index');
 			} else {
 				JenisBarang::where('uuid', $uuid)->delete();
-				notify()->success('Data Berhasil Dihapus');
+				toastr()->success('Data Berhasil Dihapus');
 				return redirect()->route('jenis-barang.index');
 			}
 		}

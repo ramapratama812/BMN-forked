@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="shortcut icon" href="{{ asset('img/assets/bg_esimba.png') }}" type="image/x-icon" />
     <title>Logbook Tim Perbaikan | BMN</title>
-    @notifyCss
+    @toastrCss
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
@@ -99,7 +99,7 @@
 </head>
 
 <body class="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased selection:bg-[#1b365d] selection:text-white">
-    <div class="absolute top-0 left-0 right-0 z-[100]"><x-notify::notify /></div>
+    @toastrRender
 
     <div class="bg-[#1b365d] relative overflow-hidden pb-32">
         <div class="absolute inset-0 opacity-10"
@@ -412,7 +412,7 @@
             class="max-w-full max-h-full rounded-lg shadow-2xl object-contain relative z-[205]">
     </div>
 
-    @notifyJs
+    @toastrJs
 
     {{-- Script untuk Toggle Input Bulan / Minggu --}}
     <script>

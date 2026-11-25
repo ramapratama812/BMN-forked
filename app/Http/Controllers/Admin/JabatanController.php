@@ -39,7 +39,7 @@ class JabatanController extends Controller
 			'jabatan' => $request->jabatan
 		]);
 
-		notify()->success('Data Berhasil Disimpan');
+		toastr()->success('Data Berhasil Disimpan');
 		return redirect()->route('jabatan.index');
 	}
 
@@ -64,7 +64,7 @@ class JabatanController extends Controller
 		$data = $request->except(['_token', '_method']);
 
 		Jabatan::where('uuid', $uuid)->update($data);
-		notify()->success('Data Berhasil Diperbarui');
+		toastr()->success('Data Berhasil Diperbarui');
 		return response()->json(['success' => true]);
 	}
 
@@ -76,11 +76,11 @@ class JabatanController extends Controller
 			$isRelate = User::where('jabatan_id', $jabatan->id)->first();
 
 			if ($isRelate) {
-				notify()->error('Jabatan ini tidak dapat dihapus karena masih digunakan pada data user lainnya.');
+				toastr()->error('Jabatan ini tidak dapat dihapus karena masih digunakan pada data user lainnya.');
 				return redirect()->route('jabatan.index');
 			} else {
 				Jabatan::where('uuid', $uuid)->delete();
-				notify()->success('Data Berhasil Dihapus');
+				toastr()->success('Data Berhasil Dihapus');
 				return redirect()->route('jabatan.index');
 			}
 		}

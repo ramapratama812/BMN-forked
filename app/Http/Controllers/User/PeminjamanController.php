@@ -644,7 +644,7 @@ class PeminjamanController extends Controller
 		$peminjaman = Peminjaman::where('kode_peminjaman', $kodePeminjaman)->first();
 
 		if (!$peminjaman) {
-			notify()->error('Data peminjaman tidak ditemukan.');
+			toastr()->error('Data peminjaman tidak ditemukan.');
 			return redirect()->back();
 		}
 

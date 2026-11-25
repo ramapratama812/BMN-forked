@@ -22,7 +22,7 @@
   <link rel="shortcut icon" href="{{ asset('/favicon.ico') }}" type="image/x-icon">
   <link href="https://fonts.cdnfonts.com/css/avenir" rel="stylesheet">
   <title>User Options</title>
-  @notifyCss
+  @toastrCss
   @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -168,11 +168,9 @@
   </div>
 
 
-  <div class="absolute top-0 left-0 right-0 z-50">
-    <x-notify::notify />
-  </div>
+  @toastrRender
 
-  @notifyJs
+  @toastrJs
 </body>
 
 </html>

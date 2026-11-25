@@ -98,11 +98,11 @@ class ProfileController extends Controller
 			$user->foto = $data_foto;
 			$user->save();
 		} else {
-			notify()->error('User tidak ditemukan.');
+			toastr()->error('User tidak ditemukan.');
 			return redirect()->back();
 		}
 
-		notify()->success('Profil berhasil diubah.');
+		toastr()->success('Profil berhasil diubah.');
 		return redirect()->route('profil.index');
 	}
 
@@ -137,11 +137,11 @@ class ProfileController extends Controller
 			$user->password = Hash::make($request->new_password);
 			$user->save();
 		} else {
-			notify()->error('User tidak ditemukan.');
+			toastr()->error('User tidak ditemukan.');
 			return redirect()->back();
 		}
 
-		notify()->success('Password berhasil diubah.');
+		toastr()->success('Password berhasil diubah.');
 		return redirect()->route('profil.index')->withInput();
 	}
 }

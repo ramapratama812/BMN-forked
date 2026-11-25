@@ -37,7 +37,7 @@ class PeruntukanController extends Controller
             'peruntukan' => $request->peruntukan
         ]);
 
-        notify()->success('Data Berhasil Disimpan');
+        toastr()->success('Data Berhasil Disimpan');
         return redirect()->route('peruntukan.index');
     }
 
@@ -62,7 +62,7 @@ class PeruntukanController extends Controller
         $data = $request->except(['_token', '_method']);
 
         Peruntukan::where('uuid', $uuid)->update($data);
-        notify()->success('Data Berhasil Diperbarui');
+        toastr()->success('Data Berhasil Diperbarui');
         return response()->json(['success' => true]);
     }
 
@@ -70,7 +70,7 @@ class PeruntukanController extends Controller
     {
         Peruntukan::where('uuid', $uuid)->delete();
 
-        notify()->success('Data Berhasil Dihapus');
+        toastr()->success('Data Berhasil Dihapus');
         return redirect()->route('peruntukan.index');
     }
 

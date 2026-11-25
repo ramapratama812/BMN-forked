@@ -26,7 +26,7 @@
     <x-head.tinymce-config />
 
     {{-- Notifications --}}
-    @notifyCss
+    @toastrCss
 
     {{-- Vite Assets --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -74,11 +74,9 @@
         @yield('content')
 
         {{-- Notification Toast --}}
-        <div class="absolute top-0 left-0 right-0 z-50">
-            <x-notify::notify />
-        </div>
+        @toastrRender
 
-        @notifyJs
+        @toastrJs
     </div>
 
     {{-- Custom Scripts --}}

@@ -70,7 +70,7 @@ class AuthController extends Controller
         return redirect()->route('password')->with('success', 'Berhasil, silahkan isi password anda');
       } elseif ($user->role == 'user') {
 
-        notify()->success('Login Berhasil, Selamat Datang ' . $user->nama_lengkap);
+        toastr()->success('Login Berhasil, Selamat Datang ' . $user->nama_lengkap);
 
         return redirect()->intended(
           ($user->jabatan && $user->jabatan->jabatan === 'Petugas Inventaris')
@@ -80,7 +80,7 @@ class AuthController extends Controller
       } elseif ($user->role == 'tim_perbaikan') {
 
         // TAMBAHKAN BLOK INI UNTUK TIM PERBAIKAN
-        notify()->success('Login Berhasil, Selamat Datang ' . $user->nama_lengkap);
+        toastr()->success('Login Berhasil, Selamat Datang ' . $user->nama_lengkap);
 
         return redirect()->route('user.teknisi.index');
 
@@ -107,7 +107,7 @@ class AuthController extends Controller
 
 				session(['passwordVerified' => true]);
 
-				notify()->success('Login Berhasil, Selamat Datang ' . $user->nama_lengkap);
+				toastr()->success('Login Berhasil, Selamat Datang ' . $user->nama_lengkap);
 				return redirect()->route('dashboard.index');
 			} else {
 				return redirect()->back()->with('error', 'Password tidak valid !');

@@ -35,7 +35,7 @@ class CheckRole
 				], 403);
 			}
 
-			notify()->error('Anda tidak memiliki akses ke halaman ini!');
+			toastr()->error('Anda tidak memiliki akses ke halaman ini!');
 			return redirect()->back();
 		}
 

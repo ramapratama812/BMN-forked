@@ -56,7 +56,7 @@
     }
   </style>
 
-  @notifyCss
+  @toastrCss
   @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -293,11 +293,9 @@
     </div>
   </div>
 
-  <div class="absolute top-0 left-0 right-0 z-50">
-    <x-notify::notify />
-  </div>
+  @toastrRender
 
-  @notifyJs
+  @toastrJs
 
   {{-- Library html5-qrcode untuk pemindai kamera QR transaksi --}}
   <script src="https://unpkg.com/html5-qrcode"></script>

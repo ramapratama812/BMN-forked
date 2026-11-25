@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="shortcut icon" href="{{ asset('img/assets/bg_esimba.png') }}" type="image/x-icon" />
     <title>Lengkapi Data Perbaikan | BMN</title>
-    @notifyCss
+    @toastrCss
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         /* Custom Elegant Animations */
@@ -82,7 +82,7 @@
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen font-sans text-slate-800 antialiased selection:bg-[#1b365d] selection:text-white">
-    <div class="absolute top-0 left-0 right-0 z-[100]"><x-notify::notify /></div>
+    @toastrRender
 
     <div class="bg-[#1b365d] relative overflow-hidden pb-24">
         <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 32px 32px;"></div>
@@ -238,7 +238,7 @@
         </div>
     </div>
 
-    @notifyJs
+    @toastrJs
 
     {{-- MODAL PREVIEW FOTO --}}
     <div id="image-modal" class="fixed inset-0 z-[200] hidden bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">

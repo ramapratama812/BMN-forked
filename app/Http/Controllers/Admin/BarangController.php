@@ -187,7 +187,7 @@ class BarangController extends Controller
             );
 
 
-        notify()->success('Barang Berhasil Ditambahkan');
+        toastr()->success('Barang Berhasil Ditambahkan');
         return redirect()->route('barang.index');
     }
 
@@ -279,7 +279,7 @@ class BarangController extends Controller
             'Mengubah barang "' . $namaLama . '" menjadi "' . $barang->nama_barang . '"'
         );
 
-        notify()->success('Barang Berhasil Diupdate');
+        toastr()->success('Barang Berhasil Diupdate');
 
         $currentPage = $request->input('page', 1);
         return redirect()->route('barang.index', ['page' => $currentPage]);
@@ -308,7 +308,7 @@ class BarangController extends Controller
                 'Menghapus barang "' . $namaBarang . '"'
             );
 
-            notify()->success('Barang Berhasil Dihapus');
+            toastr()->success('Barang Berhasil Dihapus');
             return redirect()->route('barang.index', ['page' => $request->page]);
         }
     }
@@ -430,7 +430,7 @@ class BarangController extends Controller
         }
 
         if ($ruangans->isEmpty()) {
-            notify()->error('Data ruangan tidak ditemukan.');
+            toastr()->error('Data ruangan tidak ditemukan.');
             return redirect()->back();
         }
 

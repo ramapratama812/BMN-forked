@@ -18,7 +18,7 @@ class CheckJabatan
         $userJabatan = Auth::user()->jabatan->jabatan ?? null;
 
         if (!$userJabatan || !in_array($userJabatan, $jabatans)) {
-            notify()->error('Anda tidak memiliki akses ke halaman ini!');
+            toastr()->error('Anda tidak memiliki akses ke halaman ini!');
             return redirect()->route('user.option');
         }
 

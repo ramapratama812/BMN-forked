@@ -28,7 +28,7 @@ class PerawatanController extends Controller
 		$barang = Barang::where('uuid', $uuid)->first();
 		if ($barang) {
 			if ($barang->sisa_limit == $barang->limit) {
-				notify()->warning('Barang sudah direset sebelumnya');
+				toastr()->warning('Barang sudah direset sebelumnya');
 				return redirect()->back();
 			}
 
@@ -36,7 +36,7 @@ class PerawatanController extends Controller
 				'sisa_limit' => $barang->limit,
 				'status' => 'tersedia'
 			]);
-			notify()->success('Limit Berhasil Direset');
+			toastr()->success('Limit Berhasil Direset');
 			return redirect()->route('perawatan.limit.habis.index');
 		}
 	}
@@ -142,9 +142,9 @@ class PerawatanController extends Controller
                 'sisa_limit' => $barang->limit,
             ]);
 
-            notify()->success('Barang rusak berhasil diperbaiki dan tersedia kembali');
+            toastr()->success('Barang rusak berhasil diperbaiki dan tersedia kembali');
         } else {
-            notify()->warning('Barang tidak ditemukan atau bukan dalam kondisi rusak');
+            toastr()->warning('Barang tidak ditemukan atau bukan dalam kondisi rusak');
         }
 
         return redirect()->route('perawatan.barang.rusak.index');
@@ -163,16 +163,16 @@ class PerawatanController extends Controller
                     'status' => 'tersedia'
                 ]);
 
-                notify()->success('Barang Telah Ditemukan Kembali ✅');
+                toastr()->success('Barang Telah Ditemukan Kembali ✅');
 
             } else {
-                notify()->warning('Barang ini sudah tersedia');
+                toastr()->warning('Barang ini sudah tersedia');
             }
 
             return redirect()->route('perawatan.barang.hilang.index');
 
         } else {
-            notify()->error('Barang tidak ditemukan');
+            toastr()->error('Barang tidak ditemukan');
             return redirect()->back();
         }
     }
@@ -261,7 +261,7 @@ class PerawatanController extends Controller
         }
         // ---------------------
 
-        notify()->success('Surat berhasil diupload dan status barang menjadi Perbaikan');
+        toastr()->success('Surat berhasil diupload dan status barang menjadi Perbaikan');
         return back();
     }
 
@@ -305,7 +305,7 @@ class PerawatanController extends Controller
         $surat->status = !$surat->status;
         $surat->save();
 
-        notify()->success('Status surat diperbarui');
+        toastr()->success('Status surat diperbarui');
         return back();
     }
 
@@ -314,7 +314,7 @@ class PerawatanController extends Controller
         $surat = \App\Models\Surat::find($id);
 
         if (!$surat) {
-            notify()->error('Surat tidak ditemukan');
+            toastr()->error('Surat tidak ditemukan');
             return back();
         }
 
@@ -327,7 +327,7 @@ class PerawatanController extends Controller
         // Hapus database
         $surat->delete();
 
-        notify()->success('Surat berhasil dihapus');
+        toastr()->success('Surat berhasil dihapus');
         return back();
     }
 
@@ -342,7 +342,7 @@ class PerawatanController extends Controller
     $barang = Barang::where('uuid', $uuid)->first();
 
     if (!$barang) {
-        notify()->error('Barang tidak ditemukan');
+        toastr()->error('Barang tidak ditemukan');
         return back();
     }
 
@@ -364,7 +364,7 @@ class PerawatanController extends Controller
         'status'     => 'ditemukan' 
     ]);
 
-    notify()->success('Surat Berhasil Diupload & Barang Status Ditemukan ✅');
+    toastr()->success('Surat Berhasil Diupload & Barang Status Ditemukan ✅');
     return back();
 }
 

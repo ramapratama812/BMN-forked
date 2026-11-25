@@ -27,7 +27,7 @@ class PengembalianController extends Controller
 	{
 		// jika tidak memasukkan kode peminjaman terlebih dahulu maka ada alert error 
 		if (!session()->has('kodePeminjaman')) {
-			notify()->error('Anda belum memasukkan kode peminjaman');
+			toastr()->error('Anda belum memasukkan kode peminjaman');
 			return redirect()->back();
 		}
 
@@ -40,14 +40,14 @@ class PengembalianController extends Controller
 		$peminjaman = Peminjaman::where('kode_peminjaman', $kodePeminjaman)->first();
 
 		if (!$peminjaman) {
-			notify()->error('Data peminjaman tidak ditemukan');
+			toastr()->error('Data peminjaman tidak ditemukan');
 			return redirect()->route('user.option');
 		}
 
 		$pengembalianSudahAda = Pengembalian::where('kode_peminjaman', $peminjaman->kode_peminjaman)->exists();
 		if ($peminjaman->status === 'Selesai' || $pengembalianSudahAda) {
 			session()->forget('kodePeminjaman');
-			notify()->error('Pengembalian barang sudah selesai');
+			toastr()->error('Pengembalian barang sudah selesai');
 			return redirect()->route('user.option');
 		}
 
@@ -483,7 +483,7 @@ class PengembalianController extends Controller
 		}
 
 		if (!$pengembalian) {
-			notify()->error('Bukti pengembalian tidak ditemukan.');
+			toastr()->error('Bukti pengembalian tidak ditemukan.');
 			return redirect()->route('user.option');
 		}
 

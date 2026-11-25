@@ -92,7 +92,7 @@ class UserController extends Controller
 
     // Pengecekan apakah jabatan ada di database
     if (!$jabatanUser) {
-      notify()->error("Jabatan {$namaJabatanError} tidak ditemukan di database.");
+      toastr()->error("Jabatan {$namaJabatanError} tidak ditemukan di database.");
       return redirect()->back();
     }
 
@@ -119,7 +119,7 @@ class UserController extends Controller
       'foto' => NULL,
     ]);
 
-    notify()->success('User Berhasil Ditambahkan');
+    toastr()->success('User Berhasil Ditambahkan');
     return redirect()->route('users.index');
   }
 
@@ -214,7 +214,7 @@ class UserController extends Controller
 
 		$user->update($updateData);
 
-		notify()->success('User Berhasil Diupdate');
+		toastr()->success('User Berhasil Diupdate');
 		return redirect()->route('users.index');
 	}
 
@@ -234,7 +234,7 @@ class UserController extends Controller
 			}
 
 			$user->delete();
-			notify()->success('user Berhasil Dihapus');
+			toastr()->success('user Berhasil Dihapus');
 			return redirect()->route('users.index');
 		}
 	}
@@ -309,7 +309,7 @@ class UserController extends Controller
 {
     $user = User::where('uuid', $uuid)->first();
     if (!$user) {
-        notify()->error('User tidak ditemukan !');
+        toastr()->error('User tidak ditemukan !');
         return redirect()->back();
     }
 

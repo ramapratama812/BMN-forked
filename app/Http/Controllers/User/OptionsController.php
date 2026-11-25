@@ -100,11 +100,11 @@ class OptionsController extends Controller
 			$user->foto = $data_foto;
 			$user->save();
 		} else {
-			notify()->error('User tidak ditemukan.');
+			toastr()->error('User tidak ditemukan.');
 			return redirect()->back();
 		}
 
-		notify()->success('Profil berhasil diubah.');
+		toastr()->success('Profil berhasil diubah.');
 
 		// LOGIKA REDIRECT BARU:
 		$from = $request->input('from');

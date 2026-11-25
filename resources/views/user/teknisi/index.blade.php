@@ -10,7 +10,7 @@
   <link href="https://fonts.cdnfonts.com/css/avenir" rel="stylesheet" />
   <title>Dashboard Tim Perbaikan | BMN</title>
 
-  @notifyCss
+  @toastrCss
   @vite(['resources/css/app.css', 'resources/js/app.js'])
 
   <style>
@@ -339,8 +339,8 @@
     </div>
   </div>
 
-  <div class="absolute top-0 left-0 right-0 z-[100]"><x-notify::notify /></div>
-  @notifyJs
+  @toastrRender
+  @toastrJs
 
   <script>
     // Tab Logic

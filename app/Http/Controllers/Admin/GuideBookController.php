@@ -45,7 +45,7 @@ class GuideBookController extends Controller
 				'status' => 'used' // Otomatis aktif setelah upload
 			]);
 
-			notify()->success('Guidebook berhasil diupload dan diaktifkan!');
+			toastr()->success('Guidebook berhasil diupload dan diaktifkan!');
 		}
 
 		return redirect()->back();
@@ -59,7 +59,7 @@ class GuideBookController extends Controller
 				'status' => 'unused'
 			]);
 
-		notify()->warning('Guidebook dinonaktifkan!');
+		toastr()->warning('Guidebook dinonaktifkan!');
 		return redirect()->back();
 	}
 
@@ -74,7 +74,7 @@ class GuideBookController extends Controller
 				'status' => 'used'
 			]);
 
-		notify()->success('Guidebook berhasil diaktifkan!');
+		toastr()->success('Guidebook berhasil diaktifkan!');
 		return redirect()->back();
 	}
 
@@ -90,7 +90,7 @@ class GuideBookController extends Controller
 		// Hapus data dari database
 		$book->delete();
 
-		notify()->success('Guidebook berhasil dihapus!');
+		toastr()->success('Guidebook berhasil dihapus!');
 		return redirect()->back();
 	}
 }

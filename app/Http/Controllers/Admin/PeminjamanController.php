@@ -77,7 +77,7 @@ class PeminjamanController extends Controller
 		$peminjaman = Peminjaman::where('uuid', $uuid)->first();
 
 		if (!$peminjaman) {
-			notify()->error('Peminjaman tidak ditemukan');
+			toastr()->error('Peminjaman tidak ditemukan');
 			return redirect()->back();
 		}
 
@@ -199,7 +199,7 @@ public function exportLaporanBulanan(Request $request)
 
 		Catatan::where('id', $id)->update($data);
 
-		notify()->success('Catatan berhasil diubah');
+		toastr()->success('Catatan berhasil diubah');
 		return redirect()->route('peminjaman.index');
 	}
 }
